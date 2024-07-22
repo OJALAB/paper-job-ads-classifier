@@ -1,0 +1,3 @@
+"0","hierachy <- fread(""~/mac/nauka/oja-lab/job-ads-datasets/data/kzis-hierarchy-2023.tsv"", colClasses = ""character"", sep = ""\t"")"
+"0","hierachy6 <- hierachy[str_detect(class, ""\\d{6}"")]"
+"0","head(hierachy, 10)"
