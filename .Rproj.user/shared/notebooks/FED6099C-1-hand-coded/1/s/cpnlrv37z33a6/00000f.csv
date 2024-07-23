@@ -1,0 +1,28 @@
+"0","expert_quality2[, .SD, .SDcols = patterns(""id_ogl|pair|all|weight"")] |>"
+"0","  melt(id.vars = c(""id_ogl"", ""weight"")) |>  "
+"0","  {\(x) x[, .(N=sum(weight)), keyby=.(variable, value)]}() |>"
+"0","  {\(x) x[, c(""pair"", ""digit""):= tstrsplit(variable,""_"")]}() |>"
+"0","  {\(x) x[, p:=N/sum(N)*100, variable]}() |>"
+"0","  transform(variable = NULL,"
+"0","            pair = factor(pair, c(""pair12"", ""pair13"", ""pair23"", ""all""))) |>"
+"0","  subset(value == TRUE) |>"
+"0","  dcast(value + pair ~ digit, value.var = ""p"") |>"
+"0","  transform(value = NULL) |>"
+"0","  xtable() |>"
+"0","  print.xtable(include.rownames = F)"
+"1","% latex table generated in R 4.3.2 by xtable 1.8-4 package
+% Tue Jul 23 15:52:03 2024
+\begin{table}[ht]
+\centering
+\begin{tabular}{lrrrr}
+  \hline
+pair & d1 & d2 & d4 & d6 \\ 
+  \hline
+pair12 & 92.72 & 90.48 & 84.70 & 80.89 \\ 
+  pair13 & 89.54 & 89.54 & 84.13 & 77.05 \\ 
+  pair23 & 86.18 & 85.17 & 80.30 & 72.55 \\ 
+  all & 84.22 & 83.21 & 75.18 & 68.23 \\ 
+   \hline
+\end{tabular}
+\end{table}
+"

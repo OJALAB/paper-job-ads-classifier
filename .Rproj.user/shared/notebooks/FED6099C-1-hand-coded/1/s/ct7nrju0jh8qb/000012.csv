@@ -1,0 +1,2 @@
+"0","cbop_to_hand <- fread(""../../../_old_/oferty-pracy/train_cbop_2020_2022.csv.tar.gz"", colClasses = ""character"", "
+"0","                      select = c(""hash"", ""kod_zawodu""))"

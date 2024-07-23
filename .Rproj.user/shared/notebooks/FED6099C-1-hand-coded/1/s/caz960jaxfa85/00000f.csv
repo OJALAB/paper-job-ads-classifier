@@ -1,0 +1,6 @@
+"0","hand <- dir(path = ""../../../job-ads-datasets/data-raw/"", pattern = ""*done.xlsx"", full.names = T)"
+"0","hand <- lapply(hand, read_excel, col_types = ""text"")"
+"0","hand <- rbindlist(hand, idcol = ""ekspert"", fill = T)"
+"0","hand[source_gr == ""CBOP"", cbop_hash := str_remove(url, ""\\$\\{link\\.szczegoly\\.oferty\\}"")]"
+"0","hand[source_gr == ""CBOP"", cbop_hash := str_remove(cbop_hash, ""https://oferty.praca.gov.pl/portal/index.cbop#/szczegolyOferty\\?"")]"
+"0","hand[, weight:= 1/as.numeric(Prob)]"

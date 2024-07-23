@@ -1,0 +1,8 @@
+"0","train_limited <- fread(""~/mac/nauka/oja-lab/job-ads-datasets/data/train-test/train-data-source-2024.tar.gz"", colClasses = ""character"")"
+"0","test_limited <- fread(""~/mac/nauka/oja-lab/job-ads-datasets/data/train-test/test-data-source-2024.tar.gz"", colClasses = ""character"")"
+"0","train_full <- fread(""~/mac/nauka/oja-lab/job-ads-datasets/data/train-test/train-data-whole-source-2024.tar.gz"", colClasses = ""character"")"
+"0","test_full <- fread(""~/mac/nauka/oja-lab/job-ads-datasets/data/train-test/test-data-whole-source-2024.tar.gz"", colClasses = ""character"")"
+"0",""
+"0","df_limited <- rbind(train_limited,test_limited)"
+"0","df_full <- rbind(train_full,test_full)"
+"0","rm(train_limited,test_limited,train_full,test_full)"

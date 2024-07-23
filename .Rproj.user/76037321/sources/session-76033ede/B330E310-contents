@@ -107,7 +107,7 @@ df2 <- df_full[,.N, class][, N_cut := cut(N, breaks = c(1, 2, 3, 4, 5, 10, 25, 5
       , .(N_cut, n_codes_f=p_codes, p_codes_f=p_codes, n_obs_f=n_obs, p_obs_f=p_obs)] 
 
 df1[df2, on = "N_cut"]|>
-  xtable() |>
+  xtable(digits=1) |>
   print.xtable(include.rownames = F, format.args = list(big.mark = ","))
 ```
 

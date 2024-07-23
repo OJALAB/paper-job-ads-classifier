@@ -1,0 +1,20 @@
+"0","df_full[, .N, source][, id:=1] |>"
+"0","  transform(source = factor(source, c(""official"", ""info"", ""gus"", ""esco"", ""kprm"", ""hand"", ""hand1k"", ""cbop""))) |>"
+"0","  dcast(id ~ source, value.var = ""N"") |>"
+"0","  transform(cbop_l = sum(df_limited$source == ""cbop""),"
+"0","            id = NULL) |> "
+"0","  xtable() |>"
+"0","  print.xtable(include.rownames = F, format.args = list(big.mark = "",""))"
+"1","% latex table generated in R 4.3.2 by xtable 1.8-4 package
+% Mon Jul 22 13:54:52 2024
+\begin{table}[ht]
+\centering
+\begin{tabular}{rrrrrrrrr}
+  \hline
+official & info & gus & esco & kprm & hand & hand1k & cbop & cbop\_l \\ 
+  \hline
+9,200 & 7,000 & 1,342 & 2,114 & 2,941 & 9,992 & 1,000 & 823,298 & 164,215 \\ 
+   \hline
+\end{tabular}
+\end{table}
+"
