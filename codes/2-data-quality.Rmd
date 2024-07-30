@@ -45,14 +45,11 @@ rbind(
 Read training and test datasets
 
 ```{r}
-train_limited <- fread("~/mac/nauka/oja-lab/job-ads-datasets/data/train-test/train-data-source-2024.tar.gz", colClasses = "character")
-test_limited <- fread("~/mac/nauka/oja-lab/job-ads-datasets/data/train-test/test-data-source-2024.tar.gz", colClasses = "character")
-train_full <- fread("~/mac/nauka/oja-lab/job-ads-datasets/data/train-test/train-data-whole-source-2024.tar.gz", colClasses = "character")
-test_full <- fread("~/mac/nauka/oja-lab/job-ads-datasets/data/train-test/test-data-whole-source-2024.tar.gz", colClasses = "character")
+train_full <- fread("~/mac/nauka/oja-lab/job-ads-datasets/data/train-test/train-data-2024.tar.gz", colClasses = "character")
+test_full <- fread("~/mac/nauka/oja-lab/job-ads-datasets/data/train-test/test-data-2024.tar.gz", colClasses = "character")
 
-df_limited <- rbind(train_limited,test_limited)
 df_full <- rbind(train_full,test_full)
-rm(train_limited,test_limited,train_full,test_full)
+df_full[, .N]
 ```
 
 General information on the data
@@ -61,8 +58,7 @@ General information on the data
 df_full[, .N, source][, id:=1] |>
   transform(source = factor(source, c("official", "info", "gus", "esco", "kprm", "hand", "hand1k", "cbop"))) |>
   dcast(id ~ source, value.var = "N") |>
-  transform(cbop_l = sum(df_limited$source == "cbop"),
-            id = NULL) |> 
+  transform(id = NULL) |> 
   xtable() |>
   print.xtable(include.rownames = F, format.args = list(big.mark = ","))
 ```
@@ -70,51 +66,36 @@ df_full[, .N, source][, id:=1] |>
 Coverage of codes by sources and dataset (table 5.1)
 
 ```{r}
-hierachy6[, esco :=  class %in% unique(df_limited$class[df_limited$source == "esco"])]
-hierachy6[, gus :=  class %in% unique(df_limited$class[df_limited$source == "gus"])]
-hierachy6[, info :=  class %in% unique(df_limited$class[df_limited$source == "info"])]
-hierachy6[, kprm :=  class %in% unique(df_limited$class[df_limited$source == "kprm"])]
-hierachy6[, hand :=  class %in% unique(df_limited$class[df_limited$source == "hand"])]
-hierachy6[, hand1k :=  class %in% unique(df_limited$class[df_limited$source == "hand1k"])]
-hierachy6[, cbop_l:= class %in% unique(df_limited$class[df_limited$source == "cbop"])]
-hierachy6[, cbop_f:= class %in% unique(df_full$class[df_full$source == "cbop"])]
+hierachy6[, esco :=  class %in% unique(df_full$class[df_full$source == "esco"])]
+hierachy6[, gus :=  class %in% unique(df_full$class[df_full$source == "gus"])]
+hierachy6[, info :=  class %in% unique(df_full$class[df_full$source == "info"])]
+hierachy6[, kprm :=  class %in% unique(df_full$class[df_full$source == "kprm"])]
+hierachy6[, hand :=  class %in% unique(df_full$class[df_full$source == "hand"])]
+hierachy6[, hand1k :=  class %in% unique(df_full$class[df_full$source == "hand1k"])]
+hierachy6[, cbop:= class %in% unique(df_full$class[df_full$source == "cbop"])]
 
-hierachy6[, all_l := (esco + gus + info + kprm + hand + hand1k + cbop_l) > 0]
-hierachy6[, all_f := (esco + gus + info + kprm + hand + hand1k + cbop_f) > 0]
+hierachy6[, all := (esco + gus + info + kprm + hand + hand1k + cbop) > 0]
 
-setcolorder(hierachy6, c("class", "name", "info", "gus", "esco", "kprm", "hand", "hand1k", "cbop_l", "cbop_f"))
+setcolorder(hierachy6, c("class", "name", "info", "gus", "esco", "kprm", "hand", "hand1k", "cbop", "all"))
 
-hierachy6[, lapply(.SD, function(x) mean(x)*100),  keyby=.(digit1=substr(class,1,1)), .SDcols = info:all_f] |>
+hierachy6[, lapply(.SD, function(x) mean(x)*100),  keyby=.(digit1=substr(class,1,1)), .SDcols = info:all]|>
+  transform(N = df_full[,.N, keyby=.(class=substr(class,1,1))]$N) |>
   xtable(digits=1) |>
-  print.xtable(include.rownames = F)
+  print.xtable(include.rownames = F, format.args = list(big.mark =","))
 ```
 
-Distribution of cases by class
+
+Number of cases for a given class
 
 ```{r}
-df1 <- df_limited[,.N, class][, N_cut := cut(N, breaks = c(1, 2, 3, 4, 5, 10, 25, 50, 100, 500, 1000, Inf), 
-                                   labels = c(1, 2, 3, 4, "[5,10)", "[10, 25)", "[25, 50)", "[50, 100)", "[100, 500)", "[500, 1000)", "1000+"),
-                                   include.lowest = T, ordered = T, right = F)][
-  , .(n_codes=.N, n_obs=sum(N)), keyby=N_cut][
-    , ":="(p_codes=n_codes/sum(n_codes)*100, p_obs = n_obs/sum(n_obs)*100)][
-      , .(N_cut, n_codes, p_codes, n_obs, p_obs)]
-
-df2 <- df_full[,.N, class][, N_cut := cut(N, breaks = c(1, 2, 3, 4, 5, 10, 25, 50, 100, 500, 1000, Inf), 
-                                   labels = c(1, 2, 3, 4, "[5,10)", "[10, 25)", "[25, 50)", "[50, 100)", "[100, 500)", "[500, 1000)", "1000+"),
-                                   include.lowest = T, ordered = T, right = F)][
-  , .(n_codes=.N, n_obs=sum(N)), keyby=N_cut][
-    , ":="(p_codes=n_codes/sum(n_codes)*100, p_obs = n_obs/sum(n_obs)*100)][
-      , .(N_cut, n_codes_f=p_codes, p_codes_f=p_codes, n_obs_f=n_obs, p_obs_f=p_obs)] 
-
-df1[df2, on = "N_cut"]|>
-  xtable(digits=1) |>
-  print.xtable(include.rownames = F, format.args = list(big.mark = ","))
+df_full[,.N, class][, .(nrows=.N), keyby=N]
 ```
+
 
 Which are not covered by data source
 
 ```{r}
-hierachy6[all_f == FALSE, .N, .(d1=substr(class,1,1))]
+hierachy6[all == FALSE, .N, .(d1=substr(class,1,1))]
 ```
 
 Number of characters by main groups 
@@ -123,7 +104,15 @@ Number of characters by main groups
 df_full[, n_chars:= str_count(desc, "\\w+")]
 ```
 
-Table 5.3
+Table words -- overall
+
+```{r}
+df_full[, as.list(summary(n_chars))] |>
+  xtable(digits = 0) |>
+  print.xtable(include.rownames = F, format.args = list(big.mark = ","))
+```
+
+Table words -- by group
 
 ```{r}
 df_full[, as.list(summary(n_chars)), keyby=.(digit1=substr(class,1,1))] |>
@@ -145,7 +134,31 @@ df_full[, as.list(summary(n_chars)), keyby=.(digit1=substr(class,1,1), source)]|
   print.xtable(include.rownames = F, format.args = list(big.mark = ","))
 ```
 
+
+Information about the number of cases
+
 ```{r}
-df_full
+train_full[, .(train_cases=.N, train_codes=uniqueN(class)), source] |>
+  merge(x = _,
+        y = test_full[, .(test_cases=.N, test_codes=uniqueN(class)), source],
+        by = "source",
+        all = T) |>
+  xtable(digits = 0) |>
+  print.xtable(include.rownames = F, format.args = list(big.mark = ","))
+```
+
+```{r}
+train_full[, .(train_cases=.N, train_codes=uniqueN(class))][, source:="All"] |>
+  merge(x = _,
+        y = test_full[, .(test_cases=.N, test_codes=uniqueN(class))][, source:="All"],
+        by = "source",
+        all = T) |>
+  xtable(digits = 0) |>
+  print.xtable(include.rownames = F, format.args = list(big.mark = ","))
+```
+
+```{r}
+train_full[source %in% c("hand", "hand1k"), .N, keyby=.(code = substr(class,1,1))]
+test_full[source %in% c("hand", "hand1k"), .N, keyby=.(code = substr(class,1,1))]
 ```
 

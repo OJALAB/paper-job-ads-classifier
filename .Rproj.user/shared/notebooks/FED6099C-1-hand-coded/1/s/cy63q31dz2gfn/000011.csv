@@ -1,8 +1,0 @@
-"0","cbop_hand <- hand_selected[!is.na(cbop_hash), .(ekspert, id_ogl, hash=cbop_hash, kod_zawodu=kod_zawodu_corrected, weight, strata)]"
-"0","cbop_hand[cbop_to_hand, on = ""hash"", kod_zawodu_cbop := i.kod_zawodu]"
-"0","cbop_hand <- cbop_hand[!is.na(kod_zawodu_cbop) & !is.na(kod_zawodu)]"
-"0","cbop_hand <- cbop_hand[, .SD[1], id_ogl]"
-"0","cbop_hand[, "":=""(d1 = substr(kod_zawodu,1,1) == substr(kod_zawodu_cbop,1,1),"
-"0","                 d2 = substr(kod_zawodu,1,2) == substr(kod_zawodu_cbop,1,2),"
-"0","                 d4 = substr(kod_zawodu,1,4) == substr(kod_zawodu_cbop,1,4),"
-"0","                 d6 = substr(kod_zawodu,1,6) == substr(kod_zawodu_cbop,1,6))]"

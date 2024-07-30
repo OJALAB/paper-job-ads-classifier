@@ -9,6 +9,7 @@ library(data.table)
 library(ggplot2)
 library(stringr)
 library(survey)
+library(xtable)
 options(survey.lonely.psu = "adjust")
 ```
 
@@ -19,10 +20,18 @@ cbop_to_hand <- fread("../../../_old_/oferty-pracy/train_cbop_2020_2022.csv.tar.
                       select = c("hash", "kod_zawodu"))
 ```
 
+Processed hand-coded data
+
+```{r}
+hand_for_training <- read_excel("../../../job-ads-datasets/data-raw/hand-coded.xlsx") |> setDT()
+```
+
+
+
 Read the hand coded data
 
 ```{r}
-hand <- dir(path = "../../../job-ads-datasets/data-raw/", pattern = "*done.xlsx", full.names = T)
+hand <- dir(path = "../../../job-ads-datasets/data-raw/hand-coded/", pattern = "*done.xlsx", full.names = T)
 hand <- lapply(hand, read_excel, col_types = "text")
 hand <- rbindlist(hand, idcol = "ekspert", fill = T)
 hand[source_gr == "CBOP", cbop_hash := str_remove(url, "\\$\\{link\\.szczegoly\\.oferty\\}")]
@@ -50,11 +59,15 @@ hand_selected[is.na(kod_zawodu), kod_zawodu  := kod_zawodu2 ]
 hand_selected[, kod_zawodu_corrected:= kod_zawodu]
 ```
 
+Check the quality of coding
+
 ```{r}
 expert_quality <- hand_selected[id_ogl %in% hand_selected[!is.na(id_ogl), .N, id_ogl][N==3]$id_ogl, 
               .(id_ogl, ekspert=paste0("e_",ekspert), kod_zawodu, weight, source, strata=as.numeric(strata))] |>
   dcast(id_ogl + strata + source + weight ~ ekspert, value.var = "kod_zawodu") |>
+  ## two with missing data
   subset(!id_ogl %in% c("940614", "483819")) |>
+  ## paired comparisons
   transform(pair12_d1 = substr(e_1,1,1) == substr(e_2,1,1),
             pair13_d1 = substr(e_1,1,1) == substr(e_3,1,1),
             pair23_d1 = substr(e_2,1,1) == substr(e_3,1,1),
@@ -68,6 +81,7 @@ expert_quality <- hand_selected[id_ogl %in% hand_selected[!is.na(id_ogl), .N, id
             pair13_d6 = substr(e_1,1,6) == substr(e_3,1,6),
             pair23_d6 = substr(e_2,1,6) == substr(e_3,1,6)
             ) |>
+  ## overall comparisons
   transform(all_d1 = pair12_d1 & pair13_d1 & pair23_d1,
             all_d2 = pair12_d2 & pair13_d2 & pair23_d2,
             all_d4 = pair12_d4 & pair13_d4 & pair23_d4,
@@ -75,32 +89,46 @@ expert_quality <- hand_selected[id_ogl %in% hand_selected[!is.na(id_ogl), .N, id
 
 ```
 
+Estimate the quality along with standard errors
+
 ```{r}
-expert_quality_svy <- svydesign(id = ~1, weights = ~ weight, strata = ~ strata,
+expert_quality_svy <- svydesign(id = ~1, 
+                                weights = ~ weight, 
+                                strata = ~ strata,
                                 data = expert_quality)
+vars <- list(~I(pair12_d1==T), ~I(pair13_d1==T), ~I(pair23_d1==T), ~I(pair12_d2==T), ~I(pair13_d2==T), ~I(pair23_d2==T), ~I(pair12_d4==T), 
+~I(pair13_d4==T), ~I(pair23_d4==T), ~I(pair12_d6==T), ~I(pair13_d6==T), ~I(pair23_d6==T), ~I(all_d1==T), ~I(all_d2==T), ~I(all_d4==T), ~I(all_d6==T))
 
-expert_quality_svy_b <- as.svrepdesign(expert_quality_svy, type = "bootstrap", replicates = 500)
+ci_results <- lapply(vars, svyciprop, design = expert_quality_svy, method = "asin")
 
-svymean(~all_d1 + all_d2 + all_d4 + all_d6, expert_quality_svy_b, na.rm=T) |> 
-  confint(df=degf(expert_quality_svy_b)) |>
-  as.data.frame()
+ci_results_df <- lapply(ci_results, function(x) data.frame(var=names(x), point = unname(x[1]), 
+                                                           low=attr(x, "ci")[1], upp=attr(x, "ci")[2]))
+
+ci_results_df <- rbindlist(ci_results_df)
+ci_results_df[, var:=str_extract(var, "(pair\\d{2}|all)_d\\d{1}")]
 ```
 
+Reporting
 
 ```{r}
-expert_quality[, .SD, .SDcols = patterns("id_ogl|pair|all|weight")] |>
-  melt(id.vars = c("id_ogl", "weight")) |>  
-  {\(x) x[, .(N=sum(weight)), keyby=.(variable, value)]}() |>
-  {\(x) x[, c("pair", "digit"):= tstrsplit(variable,"_")]}() |>
-  {\(x) x[, p:=N/sum(N)*100, variable]}() |>
+ci_results_df |>
+  melt(id.vars = "var") |>
+  {\(x) x[, c("pair", "digit"):=tstrsplit(var, "_")][]}() |>
+  transform(var = NULL,
+            digit = paste(digit, variable, sep = "_")) |>
   transform(variable = NULL,
-            pair = factor(pair, c("pair12", "pair13", "pair23", "all"))) |>
-  subset(value == TRUE) |>
-  dcast(value + pair ~ digit, value.var = "p") |>
-  transform(value = NULL) |>
+            value = sprintf("%.1f", value*100)) |>
+  dcast(pair ~ digit, value.var = "value") |>
+  transform(d1=paste0(d1_point, " (", d1_low, ", ", d1_upp, ")"),
+            d2=paste0(d2_point, " (", d2_low, ", ", d2_upp, ")"),
+            d4=paste0(d4_point, " (", d4_low, ", ", d4_upp, ")"),
+            d6=paste0(d6_point, " (", d6_low, ", ", d6_upp, ")")) |>
+  subset(select = c(pair, d1,d2,d4,d6)) |>
   xtable() |>
   print.xtable(include.rownames = F)
 ```
+
+After clerical review
 
 ```{r}
 hand_selected[ekspert == 1 & id_ogl == "82487"   , kod_zawodu_corrected:= "331203"]
@@ -140,9 +168,12 @@ hand_selected[ekspert == 3	& id_ogl == "628828", kod_zawodu_corrected := "321401
 
 
 ```{r}
-expert_quality2 <- hand_selected[id_ogl %in% hand_selected[!is.na(id_ogl), .N, id_ogl][N==3]$id_ogl, 
-              .(id_ogl, ekspert=paste0("e_",ekspert), kod_zawodu_corrected, weight)] |>
-  dcast(id_ogl + weight ~ ekspert, value.var = "kod_zawodu_corrected") |>
+expert_quality_after <- hand_selected[id_ogl %in% hand_selected[!is.na(id_ogl), .N, id_ogl][N==3]$id_ogl, 
+              .(id_ogl, ekspert=paste0("e_",ekspert), kod_zawodu, weight, source, strata=as.numeric(strata))] |>
+  dcast(id_ogl + strata + source + weight ~ ekspert, value.var = "kod_zawodu") |>
+  ## two with missing data
+  subset(!id_ogl %in% c("940614", "483819")) |>
+  ## paired comparisons
   transform(pair12_d1 = substr(e_1,1,1) == substr(e_2,1,1),
             pair13_d1 = substr(e_1,1,1) == substr(e_3,1,1),
             pair23_d1 = substr(e_2,1,1) == substr(e_3,1,1),
@@ -156,28 +187,59 @@ expert_quality2 <- hand_selected[id_ogl %in% hand_selected[!is.na(id_ogl), .N, i
             pair13_d6 = substr(e_1,1,6) == substr(e_3,1,6),
             pair23_d6 = substr(e_2,1,6) == substr(e_3,1,6)
             ) |>
+  ## overall comparisons
   transform(all_d1 = pair12_d1 & pair13_d1 & pair23_d1,
             all_d2 = pair12_d2 & pair13_d2 & pair23_d2,
             all_d4 = pair12_d4 & pair13_d4 & pair23_d4,
             all_d6 = pair12_d6 & pair13_d6 & pair23_d6)
 
+
 ```
 
 
+Estimate the quality along with standard errors
+
 ```{r}
-expert_quality2[, .SD, .SDcols = patterns("id_ogl|pair|all|weight")] |>
-  melt(id.vars = c("id_ogl", "weight")) |>  
-  {\(x) x[, .(N=sum(weight)), keyby=.(variable, value)]}() |>
-  {\(x) x[, c("pair", "digit"):= tstrsplit(variable,"_")]}() |>
-  {\(x) x[, p:=N/sum(N)*100, variable]}() |>
+expert_quality_after_svy <- svydesign(id = ~1, 
+                                weights = ~ weight, 
+                                strata = ~ strata,
+                                data = expert_quality_after)
+
+ci_results <- lapply(vars, svyciprop, design = expert_quality_after_svy, method = "asin")
+
+ci_results_df <- lapply(ci_results, function(x) data.frame(var=names(x), point = unname(x[1]), 
+                                                           low=attr(x, "ci")[1], upp=attr(x, "ci")[2]))
+
+ci_results_df <- rbindlist(ci_results_df)
+ci_results_df[, var:=str_extract(var, "(pair\\d{2}|all)_d\\d{1}")]
+```
+
+Reporting
+
+```{r}
+ci_results_df |>
+  melt(id.vars = "var") |>
+  {\(x) x[, c("pair", "digit"):=tstrsplit(var, "_")][]}() |>
+  transform(var = NULL,
+            digit = paste(digit, variable, sep = "_")) |>
   transform(variable = NULL,
-            pair = factor(pair, c("pair12", "pair13", "pair23", "all"))) |>
-  subset(value == TRUE) |>
-  dcast(value + pair ~ digit, value.var = "p") |>
-  transform(value = NULL) |>
+            value = sprintf("%.1f", value*100)) |>
+  dcast(pair ~ digit, value.var = "value") |>
+  transform(d1=paste0(d1_point, " (", d1_low, ", ", d1_upp, ")"),
+            d2=paste0(d2_point, " (", d2_low, ", ", d2_upp, ")"),
+            d4=paste0(d4_point, " (", d4_low, ", ", d4_upp, ")"),
+            d6=paste0(d6_point, " (", d6_low, ", ", d6_upp, ")")) |>
+  subset(select = c(pair, d1,d2,d4,d6)) |>
   xtable() |>
   print.xtable(include.rownames = F)
 ```
+
+Number of codes
+
+```{r}
+hand_for_training[, .(cases=.N, experts=uniqueN(ekspert), codes = uniqueN(kod_zawodu_corrected)), id_ogl][,.N, keyby=codes]
+```
+
 
 Quality of CBOP coding
 
@@ -190,32 +252,87 @@ cbop_hand[, ":="(d1 = substr(kod_zawodu,1,1) == substr(kod_zawodu_cbop,1,1),
                  d2 = substr(kod_zawodu,1,2) == substr(kod_zawodu_cbop,1,2),
                  d4 = substr(kod_zawodu,1,4) == substr(kod_zawodu_cbop,1,4),
                  d6 = substr(kod_zawodu,1,6) == substr(kod_zawodu_cbop,1,6))]
+
 cbop_hand[, ":="(d_expert= substr(kod_zawodu,1,1), 
                  d_cbop = substr(kod_zawodu_cbop,1,1))]
 ```
 
+Quality of CBOP by expert
+
 ```{r}
 cbop_hand_svy <- svydesign(id=~1, weights = ~ weight, strata=~strata, data = cbop_hand)
 
-svymean(~d1 + d2 + d4 + d6, cbop_hand_svy) |> 
-  confint()
+ci_results <- lapply(list(~I(d1==T), ~I(d2==T), ~I(d4==T), ~I(d6==T)), 
+                     function(x) svyby(x, ~ekspert, svyciprop, design = cbop_hand_svy, method = "asin", vartype = "ci"))
+
+ci_results_df <- lapply(ci_results, function(x) {
+  x$var <- names(x)[2]
+  names(x)[2] <- "digit"
+  x
+})
+
+ci_results_df <- rbindlist(ci_results_df)
+ci_results_df[, var:=str_extract(var, "d\\d{1}")]
 ```
 
-```{r}
-svytable(~d_expert + d_cbop , cbop_hand_svy, round = TRUE)
-```
+Report result
 
 ```{r}
-cbop_hand[, .(N=sum(weight)), .(d_exp=substr(kod_zawodu,1,1), d_cbop = substr(kod_zawodu_cbop,1,1))] |>
+ci_results_df |>
+  melt(id.vars = c("var", "ekspert")) |>
+  transform(var = paste(var, variable, sep = "_")) |>
+  transform(variable = NULL,
+            value = sprintf("%.1f", value*100)) |>
+  dcast(ekspert ~ var, value.var = "value") |>
+  transform(d1=paste0(d1_digit, " (", d1_ci_l, ", ", d1_ci_u, ")"),
+            d2=paste0(d2_digit, " (", d2_ci_l, ", ", d2_ci_u, ")"),
+            d4=paste0(d4_digit, " (", d4_ci_l, ", ", d4_ci_u, ")"),
+            d6=paste0(d6_digit, " (", d6_ci_l, ", ", d6_ci_u, ")")) |>
+  subset(select = c(ekspert, d1,d2,d4,d6)) |>
+  xtable() |>
+  print.xtable(include.rownames = F)
+```
+
+Overall quality
+
+
+```{r}
+ci_results <- lapply(list(~I(d1==T), ~I(d2==T), ~I(d4==T), ~I(d6==T)), 
+                     svyciprop, design = cbop_hand_svy, method = "asin")
+
+ci_results_df <- lapply(ci_results, function(x) data.frame(var=names(x), point = unname(x[1]), 
+                                                           low=attr(x, "ci")[1], upp=attr(x, "ci")[2]))
+
+ci_results_df <- rbindlist(ci_results_df)
+ci_results_df[, var:=str_extract(var, "d\\d{1}")]
+
+ci_results_df |>
+  transform(id = 1) |>
+  melt(id.vars = c("id", "var")) |>
+  transform(var = paste(var, variable, sep = "_")) |>
+  transform(variable = NULL,
+            value = sprintf("%.1f", value*100)) |>
+  dcast(id ~ var, value.var = "value") |>
+  transform(d1=paste0(d1_point, " (", d1_low, ", ", d1_upp, ")"),
+            d2=paste0(d2_point, " (", d2_low, ", ", d2_upp, ")"),
+            d4=paste0(d4_point, " (", d4_low, ", ", d4_upp, ")"),
+            d6=paste0(d6_point, " (", d6_low, ", ", d6_upp, ")")) |>
+  subset(select = c(id, d1,d2,d4,d6)) |>
+  xtable() |>
+  print.xtable(include.rownames = F)
+
+```
+
+
+```{r}
+cbop_hand[, .(N=.N), keyby=.(d_cbop = substr(kod_zawodu_cbop,1,1), d_exp=substr(kod_zawodu,1,1))] |>
   xtabs(N~ d_cbop + d_exp, data = _) |>
-  #prop.table(margin = 1) |>
-  #{\(x) x*100}() |>
   xtable(digits=1)
 
-cbop_hand[, .(N=sum(weight)), .(d_exp=substr(kod_zawodu,1,1), d_cbop = substr(kod_zawodu_cbop,1,1))] |>
+cbop_hand[, .(N=sum(weight)), keyby=.(d_cbop = substr(kod_zawodu_cbop,1,1), d_exp=substr(kod_zawodu,1,1))] |>
   xtabs(N~ d_cbop + d_exp, data = _) |>
   prop.table(margin = 1) |>
   {\(x) x*100}() |>
-  xtable(digits=0)
+  xtable(digits=1)
 ```
 
