@@ -129,9 +129,13 @@ Table for the appendix
 df_full[, as.list(summary(n_chars)), keyby=.(digit1=substr(class,1,1), source)]|>
     merge(x = _,
         y = df_full[,.N, keyby=.(digit1=substr(class,1,1), source)],
-        by = c("digit1", "source")) |>
-  xtable(digits = 1) |>
-  print.xtable(include.rownames = F, format.args = list(big.mark = ","))
+        by = c( "source", "digit1")) |>
+  xtable(digits = 1,
+         caption = "Number of words by source and main groups") |>
+  print.xtable(include.rownames = F, format.args = list(big.mark = ","),
+               tabular.environment = "longtable",
+               floating = F,
+               caption.placement = "top")
 ```
 
 

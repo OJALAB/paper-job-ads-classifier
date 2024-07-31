@@ -336,3 +336,41 @@ cbop_hand[, .(N=sum(weight)), keyby=.(d_cbop = substr(kod_zawodu_cbop,1,1), d_ex
   xtable(digits=1)
 ```
 
+# Handcoded 1k
+
+```{r}
+hand1k <- fread("../../../job-ads-datasets/data/hand-coded-1k.csv", colClasses = "character")
+hand1k[str_detect(str_to_lower(desc), "diagnosta laboratoryjny"), strata:="diagnosta laboratoryjny"]
+hand1k[str_detect(str_to_lower(desc), "lekarz weterynarii"), strata:="lekarz weterynarii"]
+hand1k[str_detect(str_to_lower(desc), "blockchain|block chain"), strata:="blockchain|block chain"]
+hand1k[str_detect(str_to_lower(desc), "(frontend|front end) developer"), strata:="(frontend|front end) developer"]
+hand1k[str_detect(str_to_lower(desc), "internet rzeczy|IoT|internet of things"), strata:="internet rzeczy|IoT|internet of things"]
+hand1k[str_detect(str_to_lower(desc), "cloud|cloud computing|chmura"), strata:="cloud|cloud computing|chmura"]
+hand1k[str_detect(str_to_lower(desc), "virtual reality|wirtualna rzeczywostość"), strata:="virtual reality|wirtualna rzeczywostość"]
+hand1k[str_detect(str_to_lower(desc), "spawacz (mag|mit|mig)"), strata:="spawacz (mag|mit|mig)"]
+hand1k[str_detect(str_to_lower(desc), "uczenie maszynowe|machine learning|data scientist"), strata:="uczenie maszynowe|machine learning|data scientist"]
+hand1k[str_detect(str_to_lower(desc), "położna"), strata:="położna"]
+hand1k[str_detect(str_to_lower(desc), "farmaceuta"), strata:="farmaceuta" ]
+hand1k[str_detect(str_to_lower(desc), "toksykolog"), strata:="toksykolog" ]
+hand1k[str_detect(str_to_lower(desc), "etyki biznesu"), strata:="etyki biznesu"]
+hand1k[str_detect(str_to_lower(desc), "informatyk(a|i) przemysłow(a|ej)|industrial computer science"), strata:="informatyk(a|i) przemysłow(a|ej)|industrial computer science"]
+hand1k[str_detect(str_to_lower(desc), "kryminaln|cyberprzest"), strata:="kryminaln|cyberprzest"]
+hand1k[str_detect(str_to_lower(desc), "cyberbezpiecz"), strata:="cyberbezpiecz"]
+hand1k[str_detect(str_to_lower(desc), "tłumacz przysięgły"), strata:="tłumacz przysięgły"]
+hand1k[str_detect(str_to_lower(desc), "robotyk"), strata:="robotyk"]
+hand1k[str_detect(str_to_lower(desc), "pianino|fortepian|pianina"), strata:="pianino|fortepian|pianina"]
+hand1k[is.na(strata), strata:="other"]
+```
+
+```{r}
+hand1k[, .(n=uniqueN(class), m2=uniqueN(substr(class,1,1))), strata][order(-n)] |>
+  xtable() |>
+  print.xtable(include.rownames = F)
+```
+
+```{r}
+hand1k[strata == "uczenie maszynowe|machine learning|data scientist", .N, .(class)][order(-N)]
+hand1k[strata == "toksykolog", .N, .(class)][order(-N)]
+hand1k[strata == "uczenie maszynowe|machine learning|data scientist" & class == "524990"]$desc ## bląd
+```
+
