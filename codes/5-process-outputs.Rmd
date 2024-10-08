@@ -8,6 +8,8 @@ library(reticulate)
 library(stringr)
 library(data.table)
 library(ggplot2)
+library(xtable)
+library(ggh4x)
 ```
 
 
@@ -366,7 +368,7 @@ setcolorder(multi_english, c("language", "dataset", "type", "model", "measure"))
 Argos translations
 
 ```{r}
-multi_polish_arg <- py_load_object("../results/NAWA-trans-multi-pl-results.pickle", convert = T)
+multi_polish_arg <- py_load_object("../results/NAWA-trans-multi-pl-results-argos.pickle", convert = T)
 multi_polish_arg <- lapply(multi_polish_arg, rbindlist)
 multi_polish_arg <- lapply(multi_polish_arg, \(x) { 
   if (nrow(x) == 56) {
@@ -396,7 +398,7 @@ setorderv(multi_polish_arg, c("language", "dataset", "type", "model", "measure")
 setnames(multi_polish_arg, paste("level", 0:4), paste0("level", 0:4))
 setcolorder(multi_polish_arg, c("language", "dataset", "type", "model", "measure"))
 
-multi_english_arg <- py_load_object("../results/NAWA-trans-multi-en-results.pickle", convert = T)
+multi_english_arg <- py_load_object("../results/NAWA-trans-multi-en-results-argos.pickle", convert = T)
 multi_english_arg <- lapply(multi_english_arg, rbindlist)
 multi_english_arg <- lapply(multi_english_arg, \(x) { 
   if (nrow(x) == 56) {
@@ -464,12 +466,70 @@ setcolorder(multi_english_her, c("language", "dataset", "type", "model", "measur
 ```{r}
 rbind(multi_polish[, trans:="Google"], multi_english[, trans:="Google"], 
       multi_polish_arg[, trans:="Argos"], multi_english_arg[, trans:="Argos"],
-      multi_english_her[, trans:=""]) |>
+      multi_english_her[, trans:=""],
+      transformer_results_df[model %in% c("Transformer(bottom)", "Transformer(top)")][, trans:=""][, language:="Polish"]) |>
   melt(id.vars = c("trans", "language", "dataset", "type", "model", "measure")) |>
   subset(dataset %in% c("Overall", "CBOP", "Hand-coded") 
          & measure %in% c("recall@1") 
          & type == "Test dataset"
          )  |>
+  transform(model= paste0(model, " (", trans, ")")) |>
+  transform(variable = factor(variable, paste0("level", 0:4), 
+                              c("1 digit", "2 digits", "3 digits", "4 digits\nISCO", "6 digits")),
+            model = factor(model, 
+                           levels = c("Transformer(rob,bottom) (Google)", 
+                                      "Transformer(rob,top) (Google)", 
+                                      "Transformer(rob,bottom) (Argos)", 
+                                      "Transformer(rob,top) (Argos)", 
+                                      "Transformer(bottom) ()",
+                                      "Transformer(rob,bottom,her) ()", 
+                                      "Transformer(top) ()",
+                                      "Transformer(rob,top,her) ()"),
+                           labels = c("Transformer (XLM-RoBERTa-base), bottom-up (Google)", 
+                                      "Transformer (XLM-RoBERTa-base), top-down (Google)", 
+                                      "Transformer (XLM-RoBERTa-base), bottom-up (Argos)", 
+                                      "Transformer (XLM-RoBERTa-base), top-down (Argos)", 
+                                      "Transformer (HerBERT-base), bottom-up", 
+                                      "Transformer (HerBERT-base), bottom-up", 
+                                      "Transformer (HerBERT-base), top-down",
+                                      "Transformer (HerBERT-base), top-down"))) -> data_for_plot
+  
+```
+
+```{r}
+data_for_plot |> 
+ggplot(data = _, aes(x = variable, 
+                       y = value, 
+                       group = model, 
+                       fill = model)) +
+  geom_col(position = "dodge", color = "black") +
+  geom_text(aes(label = scales::percent(value, scale=1,accuracy = 0.1,suffix="")), 
+            position = position_dodge(width = 0.9), 
+            vjust = 0.5,
+            size = 2,
+            hjust = -0.25,
+            angle = 0) + 
+  facet_nested_wrap(~language+dataset) +
+  scale_fill_brewer(type = "qual", palette = "Paired") +
+  scale_x_discrete(limits = rev(levels(data_for_plot$variable))) +
+  scale_y_continuous(breaks = seq(0,110,10),
+                     limits = c(0,90)) + 
+  labs(x = "Occupation digit", y = "Accuracy (Recall@1)", fill = "Classifier") +
+  #theme(legend.position = c(1, 0.5), legend.justification = c(1.25, 1.25)) +
+  theme(legend.position = "bottom") +
+  coord_flip()  -> p2
+
+ggsave(plot=p2,filename = "../figs/fig2-recall1.pdf", width = 12, height = 12)
+```
+
+
+Report in latex
+
+```{r}
+rbind(multi_polish[, trans:="Google"], multi_english[, trans:="Google"], 
+      multi_polish_arg[, trans:="Argos"], multi_english_arg[, trans:="Argos"],
+      multi_english_her[, trans:=""]) |>
+  melt(id.vars = c("trans", "language", "dataset", "type", "model", "measure")) |>
   transform(model=paste0(language, " ", model, " (", trans, ")")) |>
   transform(variable = factor(variable, paste0("level", 0:4), 
                               c("1 digit", "2 digits", "3 digits", "4 digits\nISCO", "6 digits")),
@@ -493,31 +553,117 @@ rbind(multi_polish[, trans:="Google"], multi_english[, trans:="Google"],
                                       "English Transformer (XLM-RoBERTa-base), bottom-up (Argos)", 
                                       "English Transformer (XLM-RoBERTa-base), top-down (Argos)", 
                                       "English Transformer (HerBERT-base), bottom-up", 
-                                      "English Transformer (HerBERT-base), top-down"))) -> data_for_plot
-  
+                                      "English Transformer (HerBERT-base), top-down"))) |>
+  dcast(...~measure, value.var = "value") -> data_for_reports
+
 ```
 
-```{r}
-ggplot(data = data_for_plot, aes(x = variable, 
-                       y = value, 
-                       group = model, 
-                       fill = model)) +
-  geom_col(position = "dodge", color = "black") +
-  geom_text(aes(label = scales::percent(value, scale=1,accuracy = 0.1,suffix="")), 
-            position = position_dodge(width = 0.9), 
-            vjust = 0.5,
-            hjust = -0.25,
-            size = 1.75,
-            angle = 0) + 
-  facet_wrap(~dataset, ncol = 2) +
-  scale_fill_brewer(type = "qual", palette = "Paired") +
-  scale_x_discrete(limits = rev(levels(data_for_plot$variable))) +
-  scale_y_continuous(breaks = seq(0,90,10)) + 
-  labs(x = "Occupation digit", y = "Accuracy (Recall@1)", fill = "Classifier") +
-  theme(legend.position = c(1, 0.5), legend.justification = c(1.25, 1.25)) +
-  coord_flip() + 
-  guides(fill = guide_legend(reverse = TRUE)) -> p2
 
-ggsave(plot=p2,filename = "../figs/fig2-recall1.pdf", width = 12, height = 12)
+```{r}
+# Assuming data_for_reports is your main data.table
+overall_levels <- unique(data_for_reports$dataset)
+variable_levels <- unique(data_for_reports$variable)
+
+# Function to bold max or min value in a column within a group
+bold_extrema <- function(x, fun) {
+  extrema <- fun(x, na.rm = TRUE)
+  ifelse(x == extrema, paste0("\\textbf{", x, "}"), as.character(x))
+}
+
+clean_for_latex_comment <- function(str) {
+  gsub("[\n\r]", " ", str)
+}
+
+
+# Initialize an empty vector to store all LaTeX output
+all_latex_output <- character()
+
+for (overall_level in overall_levels) {
+  for (var_level in variable_levels) {
+    # Subset data
+    data_for_reports_sub <- data_for_reports[dataset == overall_level & variable == var_level]
+    
+    # Round columns
+    cols_to_round <- c("recall@1", "recall@2", "recall@3", "recall@4", "recall@5", "log-loss")
+    data_for_reports_sub[, (cols_to_round) := lapply(.SD, function(x) sprintf("%.1f", round(x, digits = 1))), .SDcols = cols_to_round]
+    
+    # Define max and min columns
+    max_cols <- cols_to_round[-6]
+    min_cols <- cols_to_round[6]
+    other_cols <- "model"
+    
+    # Format data
+    suppressWarnings(
+      dt_formatted <- data_for_reports_sub[, c(
+      lapply(.SD[, ..other_cols], as.character),
+      lapply(.SD[, ..max_cols], bold_extrema, fun = max),
+      lapply(.SD[, ..min_cols], bold_extrema, fun = min)
+    ), by = c("dataset", "type")]
+    )
+    # Create xtable object
+    names(dt_formatted) <- str_to_title(names(dt_formatted))
+    latex_table <- xtable(dt_formatted[, -c(1,2)])
+    
+    # Prepare custom LaTeX code for the dataset labels
+    dataset_label_train <- "\\hline \\multicolumn{7}{c}{\\textbf{%s}} \\\\ \n"
+    dataset_label_test <- "\\hline \\multicolumn{7}{c}{\\textbf{%s}} \\\\ \\hline\n"
+    
+    # Find the middle row index
+    middle_row <- ceiling(nrow(dt_formatted) / 2)
+    
+    # Create the alignment string
+    align <- paste0("l", paste(rep("r", ncol(dt_formatted) - 1), collapse = ""))
+    
+    # Extract digit from variable level
+    digit <- gsub("\\D", "", var_level)
+    
+    # Create custom caption and label
+    caption <- sprintf("Results for dataset: %s for %s occupation code", overall_level, var_level)
+    label <- sprintf("tab-%s-%s-digit", tolower(overall_level), digit)
+    
+    # Determine whether to include Test dataset row
+    include_test <- !(overall_level %in% c("OfficialDict", "Thesaurus"))
+    
+    # Combine everything into a single LaTeX string
+    latex_output <- c(
+      sprintf("\\begin{table}[ht!]"),
+      sprintf("\\caption{%s}", caption),
+      sprintf("\\label{%s}", label),
+      "\\resizebox{\\textwidth}{!}{%",
+      sprintf("\\begin{tabular}{%s}", align),
+      "\\hline",
+      capture.output(print(latex_table, 
+                           include.rownames = FALSE,
+                           include.colnames = TRUE,
+                           sanitize.text.function = function(x) x,
+                           floating = FALSE,
+                           tabular.environment = "tabular",
+                           only.contents = TRUE,
+                           hline.after = c(-1, 0, nrow(dt_formatted)),
+                           add.to.row = list(
+                             pos = if(include_test) list(0, middle_row) else list(0),
+                             command = if(include_test) 
+                                         c(sprintf(dataset_label_train, "Train dataset"),
+                                           sprintf(dataset_label_test, "Test dataset"))
+                                       else 
+                                         c(sprintf(dataset_label_train, "Train dataset"))
+                           ))),
+      "\\end{tabular}",
+      "}",
+      "\\end{table}"
+    )
+    
+    # Add a comment separator and the current LaTeX output to the main vector
+    all_latex_output <- all_latex_output <- c(all_latex_output, 
+                          sprintf("\n%% Table for %s and %s\n", 
+                                  clean_for_latex_comment(overall_level), 
+                                  clean_for_latex_comment(var_level)),
+                          latex_output,
+                          "\n")
+  }
+}
+
+# Write all LaTeX output to a single file
+writeLines(all_latex_output, "../results/appendix-tab-class-roberta.tex")
 ```
 
