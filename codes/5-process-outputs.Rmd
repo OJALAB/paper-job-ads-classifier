@@ -1,0 +1,523 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(reticulate)
+library(stringr)
+library(data.table)
+library(ggplot2)
+```
+
+
+```{r}
+measures <- c('acc/recall@1', 'macro_acc', 'recall@2', 'recall@3', 'recall@4',
+       'recall@5', 'recall@6', 'recall@7', 'recall@8', 'recall@9', 'log-loss',
+       'mse_pred_dist', 'mse_single_pred_dist', 'recall@10', 'acc/recall@1',
+       'macro_acc', 'recall@2', 'recall@3', 'recall@4', 'recall@5', 'recall@6',
+       'recall@7', 'recall@8', 'recall@9', 'log-loss', 'mse_pred_dist',
+       'mse_single_pred_dist', 'recall@10')
+```
+
+```{r}
+linear_results <- py_load_object("../results/NAWA-linear-results.pickle", convert = T)
+linear_results <- lapply(linear_results, rbindlist)
+linear_results$overall
+linear_results <- lapply(linear_results, \(x) { 
+  if (nrow(x) == 56) {
+    x[, measure:=rep(measures, times = 2)]
+    x[, model:=rep(c("lin_top", "lin_bot"), each = 56/2)]
+    }
+  else {
+    x[, measure:=rep(measures, times = 1)]
+    x[, model:=rep(c("lin_top", "lin_bot"), each = 28/2)]
+  }
+  })
+
+linear_results_df <- rbindlist(linear_results, idcol = "dataset")
+linear_results_df <- linear_results_df[str_detect(measure, "recall\\@(1|2|3|4|5)$|log|macro")]
+linear_results_df[, measure:=str_remove(measure, "acc/")]
+
+linear_results_df[, ":="(dataset = factor(dataset, 
+                                          c("overall", "cbop", "hand", "esco", "info",  "kprm", "official", "gus"),
+                                          c("Overall", "CBOP", "Hand-coded", "ESCO", "Info+",  "KPRM", "OfficialDict", "Thesaurus")),
+                     type = factor(type, c("train", "test"), c("Train dataset", "Test dataset")),
+                     model = factor(model, c("lin_bot", "lin_top"), c("Logistic(bottom)", "Logistic(top)")),
+                     measure = factor(measure, c("recall@1", "recall@2", "recall@3", "recall@4", "recall@5", "log-loss", "macro_acc")))]
+
+setorderv(linear_results_df, c("dataset", "type", "model", "measure"))
+setnames(linear_results_df, paste("level", 0:4), paste0("level", 0:4))
+setcolorder(linear_results_df, c("dataset", "type", "model", "measure"))
+```
+
+Transformer
+
+
+```{r}
+transformer_results <- py_load_object("../results/NAWA-trans-base-results.pickle", convert = T)
+transformer_results <- lapply(transformer_results, rbindlist)
+transformer_results <- lapply(transformer_results, \(x) { 
+  if (nrow(x) == 112) {
+    x[, measure:=rep(measures, times = 4)]
+    x[, model:=rep(c("tra_top", "tra_top_rob", "tra_bot", "tra_bot_rob"), each = 112/4)]
+    }
+  else {
+    x[, measure:=rep(measures, times = 2)]
+    x[, model:=rep(c("tra_top", "tra_top_rob", "tra_bot", "tra_bot_rob"), each = 56/4)]
+  }
+  })
+
+transformer_results_df <- rbindlist(transformer_results, idcol = "dataset")
+transformer_results_df <- transformer_results_df[str_detect(measure, "recall\\@(1|2|3|4|5)$|log|macro")]
+transformer_results_df[, measure:=str_remove(measure, "acc/")]
+
+transformer_results_df[, ":="(dataset = factor(dataset, 
+                                          c("overall", "cbop", "hand", "esco", "info",  "kprm", "official", "gus"),
+                                          c("Overall", "CBOP", "Hand-coded", "ESCO", "Info+",  "KPRM", "OfficialDict", "Thesaurus")),
+                     type = factor(type, c("train", "test"), c("Train dataset", "Test dataset")),
+                     model = factor(model, c("tra_bot", "tra_top", "tra_bot_rob", "tra_top_rob"), 
+                                    c("Transformer(bottom)", "Transformer(top)", "Transformer(rob,bottom)", "Transformer(rob,top)")),
+                     measure = factor(measure, c("recall@1", "recall@2", "recall@3", "recall@4", "recall@5", "log-loss", "macro_acc")))]
+
+setorderv(transformer_results_df, c("dataset", "type", "model", "measure"))
+setnames(transformer_results_df, paste("level", 0:4), paste0("level", 0:4))
+setcolorder(transformer_results_df, c("dataset", "type", "model", "measure"))
+```
+
+```{r}
+transformer_large_results <- py_load_object("../results/NAWA-trans-large-results.pickle", convert = T)
+transformer_large_results <- lapply(transformer_large_results, rbindlist)
+transformer_large_results
+transformer_large_results <- lapply(transformer_large_results, \(x) { 
+  if (nrow(x) == 112) {
+    x[, measure:=rep(measures, times = 4)]
+    x[, model:=rep(c("tra_top", "tra_top_rob", "tra_bot", "tra_bot_rob"), each = 112/4)]
+    }
+  else {
+    x[, measure:=rep(measures, times = 2)]
+    x[, model:=rep(c("tra_top", "tra_top_rob", "tra_bot", "tra_bot_rob"), each = 56/4)]
+  }
+  })
+
+transformer_large_results_df <- rbindlist(transformer_large_results, idcol = "dataset")
+transformer_large_results_df <- transformer_large_results_df[str_detect(measure, "recall\\@(1|2|3|4|5)$|log|macro")]
+transformer_large_results_df[, measure:=str_remove(measure, "acc/")]
+
+transformer_large_results_df[, ":="(dataset = factor(dataset, 
+                                          c("overall", "cbop", "hand", "esco", "info",  "kprm", "official", "gus"),
+                                          c("Overall", "CBOP", "Hand-coded", "ESCO", "Info+",  "KPRM", "OfficialDict", "Thesaurus")),
+                     type = factor(type, c("train", "test"), c("Train dataset", "Test dataset")),
+                     model = factor(model, c("tra_bot", "tra_top", "tra_bot_rob", "tra_top_rob"), 
+                                    c("Transformer(large,bottom)", "Transformer(large,top)",
+                                      "Transformer(large,rob,bottom)","Transformer(large,rob,top)")),
+                     measure = factor(measure, c("recall@1", "recall@2", "recall@3", "recall@4", "recall@5", "log-loss", "macro_acc")))]
+
+setorderv(transformer_large_results_df, c("dataset", "type", "model", "measure"))
+setnames(transformer_large_results_df, paste("level", 0:4), paste0("level", 0:4))
+setcolorder(transformer_large_results_df, c("dataset", "type", "model", "measure"))
+```
+
+```{r}
+rbind(linear_results_df, transformer_results_df, transformer_large_results_df) |>
+  melt(id.vars = c("dataset", "type", "model", "measure")) |>
+  subset(dataset %in% c("Overall", "CBOP", "Hand-coded") 
+         & measure %in% c("recall@1") 
+         & type == "Test dataset"
+         )  |>
+  transform(variable = factor(variable, paste0("level", 0:4), 
+                           c("1 digit", "2 digits", "3 digits", "4 digits\nISCO", "6 digits")),
+            model = factor(model, 
+                           levels = c("Logistic(bottom)", "Logistic(top)", 
+                                      "Transformer(bottom)", "Transformer(top)", 
+                                      "Transformer(rob,bottom)", "Transformer(rob,top)", 
+                                      "Transformer(large,bottom)", "Transformer(large,top)", 
+                                      "Transformer(large,rob,bottom)", "Transformer(large,rob,top)"),
+                           labels = c("Linear, bottom-up", "Linear, top-down", 
+                                      "Transformer (HerBERT-base), bottom-up", "Transformer (HerBERT-base), top-down", 
+                                      "Transformer (XLM-RoBERTa-base), bottom-up", "Transformer (XLM-RoBERTa-base), top-down", 
+                                      "Transformer (HerBERT-large), bottom-up", "Transformer (HerBERT-large), top-down", 
+                                      "Transformer (XLM-RoBERTa-large), bottom-up", "Transformer (XLM-RoBERTa-large), top-down"
+                                      ))) -> data_for_plot
+  
+
+ggplot(data = data_for_plot, aes(x = variable, 
+                       y = value, 
+                       group = model, 
+                       fill = model)) +
+  geom_col(position = "dodge", color = "black") +
+  geom_text(aes(label = scales::percent(value, scale=1,accuracy = 0.1,suffix="")), 
+            position = position_dodge(width = 0.9), 
+            vjust = 0.5,
+            hjust = -0.25,
+            size = 1.75,
+            angle = 0) + 
+  facet_nested_wrap(~dataset, ncol = 2) +
+  scale_fill_brewer(type = "qual", palette = "Paired") +
+  scale_x_discrete(limits = rev(levels(data_for_plot$variable))) +
+  scale_y_continuous(breaks = seq(0,90,10)) + 
+  labs(x = "Occupation digit", y = "Accuracy (Recall@1)", fill = "Classifier") +
+  theme(legend.position = c(1, 0.5), legend.justification = c(1.25, 1.25)) +
+  coord_flip() + 
+  guides(fill = guide_legend(reverse = TRUE)) -> p1
+
+ggsave(plot=p1,filename = "../figs/fig1-recall1.pdf", width = 12, height = 12)
+```
+
+Detailed information on results
+
+
+```{r}
+rbind(linear_results_df, transformer_results_df, transformer_large_results_df) |>
+  melt(id.vars = c("dataset", "type", "model", "measure")) |>
+  transform(variable = factor(variable, paste0("level", 0:4), 
+                           c("1 digit", "2 digits", "3 digits", "4 digits\nISCO", "6 digits")),
+            model = factor(model, 
+                           levels = c("Logistic(bottom)", "Logistic(top)", 
+                                      "Transformer(bottom)", "Transformer(top)", 
+                                      "Transformer(rob,bottom)", "Transformer(rob,top)", 
+                                      "Transformer(large,bottom)", "Transformer(large,top)", 
+                                      "Transformer(large,rob,bottom)", "Transformer(large,rob,top)"),
+                           labels = c("Linear, bottom-up", "Linear, top-down", 
+                                      "Transformer (HerBERT-base), bottom-up", "Transformer (HerBERT-base), top-down", 
+                                      "Transformer (XLM-RoBERTa-base), bottom-up", "Transformer (XLM-RoBERTa-base), top-down", 
+                                      "Transformer (HerBERT-large), bottom-up", "Transformer (HerBERT-large), top-down", 
+                                      "Transformer (XLM-RoBERTa-large), bottom-up" , "Transformer (XLM-RoBERTa-large), top-down"
+                                      ))) |>
+  dcast(...~measure, value.var = "value") -> data_for_reports
+
+```
+
+Reporting to Latex
+
+```{r}
+# Assuming data_for_reports is your main data.table
+overall_levels <- unique(data_for_reports$dataset)
+variable_levels <- unique(data_for_reports$variable)
+
+# Function to bold max or min value in a column within a group
+bold_extrema <- function(x, fun) {
+  extrema <- fun(x, na.rm = TRUE)
+  ifelse(x == extrema, paste0("\\textbf{", x, "}"), as.character(x))
+}
+
+clean_for_latex_comment <- function(str) {
+  gsub("[\n\r]", " ", str)
+}
+
+
+# Initialize an empty vector to store all LaTeX output
+all_latex_output <- character()
+
+for (overall_level in overall_levels) {
+  for (var_level in variable_levels) {
+    # Subset data
+    data_for_reports_sub <- data_for_reports[dataset == overall_level & variable == var_level]
+    
+    # Round columns
+    cols_to_round <- c("recall@1", "recall@2", "recall@3", "recall@4", "recall@5", "log-loss")
+    data_for_reports_sub[, (cols_to_round) := lapply(.SD, function(x) sprintf("%.1f", round(x, digits = 1))), .SDcols = cols_to_round]
+    
+    # Define max and min columns
+    max_cols <- cols_to_round[-6]
+    min_cols <- cols_to_round[6]
+    other_cols <- "model"
+    
+    # Format data
+    suppressWarnings(
+      dt_formatted <- data_for_reports_sub[, c(
+      lapply(.SD[, ..other_cols], as.character),
+      lapply(.SD[, ..max_cols], bold_extrema, fun = max),
+      lapply(.SD[, ..min_cols], bold_extrema, fun = min)
+    ), by = c("dataset", "type")]
+    )
+    # Create xtable object
+    names(dt_formatted) <- str_to_title(names(dt_formatted))
+    latex_table <- xtable(dt_formatted[, -c(1,2)])
+    
+    # Prepare custom LaTeX code for the dataset labels
+    dataset_label_train <- "\\hline \\multicolumn{7}{c}{\\textbf{%s}} \\\\ \n"
+    dataset_label_test <- "\\hline \\multicolumn{7}{c}{\\textbf{%s}} \\\\ \\hline\n"
+    
+    # Find the middle row index
+    middle_row <- ceiling(nrow(dt_formatted) / 2)
+    
+    # Create the alignment string
+    align <- paste0("l", paste(rep("r", ncol(dt_formatted) - 1), collapse = ""))
+    
+    # Extract digit from variable level
+    digit <- gsub("\\D", "", var_level)
+    
+    # Create custom caption and label
+    caption <- sprintf("Results for dataset: %s for %s occupation code", overall_level, var_level)
+    label <- sprintf("tab-%s-%s-digit", tolower(overall_level), digit)
+    
+    # Determine whether to include Test dataset row
+    include_test <- !(overall_level %in% c("OfficialDict", "Thesaurus"))
+    
+    # Combine everything into a single LaTeX string
+    latex_output <- c(
+      sprintf("\\begin{table}[ht!]"),
+      sprintf("\\caption{%s}", caption),
+      sprintf("\\label{%s}", label),
+      "\\resizebox{\\textwidth}{!}{%",
+      sprintf("\\begin{tabular}{%s}", align),
+      "\\hline",
+      capture.output(print(latex_table, 
+                           include.rownames = FALSE,
+                           include.colnames = TRUE,
+                           sanitize.text.function = function(x) x,
+                           floating = FALSE,
+                           tabular.environment = "tabular",
+                           only.contents = TRUE,
+                           hline.after = c(-1, 0, nrow(dt_formatted)),
+                           add.to.row = list(
+                             pos = if(include_test) list(0, middle_row) else list(0),
+                             command = if(include_test) 
+                                         c(sprintf(dataset_label_train, "Train dataset"),
+                                           sprintf(dataset_label_test, "Test dataset"))
+                                       else 
+                                         c(sprintf(dataset_label_train, "Train dataset"))
+                           ))),
+      "\\end{tabular}",
+      "}",
+      "\\end{table}"
+    )
+    
+    # Add a comment separator and the current LaTeX output to the main vector
+    all_latex_output <- all_latex_output <- c(all_latex_output, 
+                          sprintf("\n%% Table for %s and %s\n", 
+                                  clean_for_latex_comment(overall_level), 
+                                  clean_for_latex_comment(var_level)),
+                          latex_output,
+                          "\n")
+  }
+}
+
+# Write all LaTeX output to a single file
+writeLines(all_latex_output, "../results/appendix-tab-class.tex")
+```
+
+
+## Multilingual model and data
+
+```{r}
+multi_polish <- py_load_object("../results/NAWA-trans-multi-pl-results-google.pickle", convert = T)
+multi_polish <- lapply(multi_polish, rbindlist)
+multi_polish <- lapply(multi_polish, \(x) { 
+  if (nrow(x) == 56) {
+    x[, measure:=rep(measures, times = 2)]
+    x[, model:=rep(c("tra_top_rob", "tra_bot_rob"), each = 56/2)]
+    }
+  else {
+    x[, measure:=rep(measures, times = 1)]
+    x[, model:=rep(c("tra_top_rob", "tra_bot_rob"), each = 28/2)]
+  }
+  })
+
+multi_polish <- rbindlist(multi_polish, idcol = "dataset")
+multi_polish <- multi_polish[str_detect(measure, "recall\\@(1|2|3|4|5)$|log|macro")]
+multi_polish[, measure:=str_remove(measure, "acc/")]
+
+multi_polish[, ":="(dataset = factor(dataset, 
+                                          c("overall", "cbop", "hand", "esco", "info",  "kprm", "official", "gus"),
+                                          c("Overall", "CBOP", "Hand-coded", "ESCO", "Info+",  "KPRM", "OfficialDict", "Thesaurus")),
+                     type = factor(type, c("train", "test"), c("Train dataset", "Test dataset")),
+                     language = "Polish", 
+                     model = factor(model, c("tra_bot_rob", "tra_top_rob"), 
+                                    c("Transformer(rob,bottom)", "Transformer(rob,top)")),
+                     measure = factor(measure, c("recall@1", "recall@2", "recall@3", "recall@4", "recall@5", "log-loss", "macro_acc")))]
+
+setorderv(multi_polish, c("language", "dataset", "type", "model", "measure"))
+setnames(multi_polish, paste("level", 0:4), paste0("level", 0:4))
+setcolorder(multi_polish, c("language", "dataset", "type", "model", "measure"))
+
+multi_english <- py_load_object("../results/NAWA-trans-multi-en-results-google.pickle", convert = T)
+multi_english <- lapply(multi_english, rbindlist)
+multi_english <- lapply(multi_english, \(x) { 
+  if (nrow(x) == 56) {
+    x[, measure:=rep(measures, times = 2)]
+    x[, model:=rep(c("tra_top_rob", "tra_bot_rob"), each = 56/2)]
+    }
+  else {
+    x[, measure:=rep(measures, times = 1)]
+    x[, model:=rep(c("tra_top_rob", "tra_bot_rob"), each = 28/2)]
+  }
+  })
+
+multi_english <- rbindlist(multi_english, idcol = "dataset")
+multi_english <- multi_english[str_detect(measure, "recall\\@(1|2|3|4|5)$|log|macro")]
+multi_english[, measure:=str_remove(measure, "acc/")]
+
+multi_english[, ":="(dataset = factor(dataset, 
+                                          c("overall", "cbop", "hand", "esco", "info",  "kprm", "official", "gus"),
+                                          c("Overall", "CBOP", "Hand-coded", "ESCO", "Info+",  "KPRM", "OfficialDict", "Thesaurus")),
+                     type = factor(type, c("train", "test"), c("Train dataset", "Test dataset")),
+                     language = "English", 
+                     model = factor(model, c("tra_bot_rob", "tra_top_rob"), 
+                                    c("Transformer(rob,bottom)", "Transformer(rob,top)")),
+                     measure = factor(measure, c("recall@1", "recall@2", "recall@3", "recall@4", "recall@5", "log-loss", "macro_acc")))]
+
+setorderv(multi_english, c("language", "dataset", "type", "model", "measure"))
+setnames(multi_english, paste("level", 0:4), paste0("level", 0:4))
+setcolorder(multi_english, c("language", "dataset", "type", "model", "measure"))
+```
+
+Argos translations
+
+```{r}
+multi_polish_arg <- py_load_object("../results/NAWA-trans-multi-pl-results.pickle", convert = T)
+multi_polish_arg <- lapply(multi_polish_arg, rbindlist)
+multi_polish_arg <- lapply(multi_polish_arg, \(x) { 
+  if (nrow(x) == 56) {
+    x[, measure:=rep(measures, times = 2)]
+    x[, model:=rep(c("tra_top_rob", "tra_bot_rob"), each = 56/2)]
+    }
+  else {
+    x[, measure:=rep(measures, times = 1)]
+    x[, model:=rep(c("tra_top_rob", "tra_bot_rob"), each = 28/2)]
+  }
+  })
+
+multi_polish_arg <- rbindlist(multi_polish_arg, idcol = "dataset")
+multi_polish_arg <- multi_polish_arg[str_detect(measure, "recall\\@(1|2|3|4|5)$|log|macro")]
+multi_polish_arg[, measure:=str_remove(measure, "acc/")]
+
+multi_polish_arg[, ":="(dataset = factor(dataset, 
+                                          c("overall", "cbop", "hand", "esco", "info",  "kprm", "official", "gus"),
+                                          c("Overall", "CBOP", "Hand-coded", "ESCO", "Info+",  "KPRM", "OfficialDict", "Thesaurus")),
+                     type = factor(type, c("train", "test"), c("Train dataset", "Test dataset")),
+                     language = "Polish", 
+                     model = factor(model, c("tra_bot_rob", "tra_top_rob"), 
+                                    c("Transformer(rob,bottom)", "Transformer(rob,top)")),
+                     measure = factor(measure, c("recall@1", "recall@2", "recall@3", "recall@4", "recall@5", "log-loss", "macro_acc")))]
+
+setorderv(multi_polish_arg, c("language", "dataset", "type", "model", "measure"))
+setnames(multi_polish_arg, paste("level", 0:4), paste0("level", 0:4))
+setcolorder(multi_polish_arg, c("language", "dataset", "type", "model", "measure"))
+
+multi_english_arg <- py_load_object("../results/NAWA-trans-multi-en-results.pickle", convert = T)
+multi_english_arg <- lapply(multi_english_arg, rbindlist)
+multi_english_arg <- lapply(multi_english_arg, \(x) { 
+  if (nrow(x) == 56) {
+    x[, measure:=rep(measures, times = 2)]
+    x[, model:=rep(c("tra_top_rob", "tra_bot_rob"), each = 56/2)]
+    }
+  else {
+    x[, measure:=rep(measures, times = 1)]
+    x[, model:=rep(c("tra_top_rob", "tra_bot_rob"), each = 28/2)]
+  }
+  })
+
+multi_english_arg <- rbindlist(multi_english_arg, idcol = "dataset")
+multi_english_arg <- multi_english_arg[str_detect(measure, "recall\\@(1|2|3|4|5)$|log|macro")]
+multi_english_arg[, measure:=str_remove(measure, "acc/")]
+
+multi_english_arg[, ":="(dataset = factor(dataset, 
+                                          c("overall", "cbop", "hand", "esco", "info",  "kprm", "official", "gus"),
+                                          c("Overall", "CBOP", "Hand-coded", "ESCO", "Info+",  "KPRM", "OfficialDict", "Thesaurus")),
+                     type = factor(type, c("train", "test"), c("Train dataset", "Test dataset")),
+                     language = "English", 
+                     model = factor(model, c("tra_bot_rob", "tra_top_rob"), 
+                                    c("Transformer(rob,bottom)", "Transformer(rob,top)")),
+                     measure = factor(measure, c("recall@1", "recall@2", "recall@3", "recall@4", "recall@5", "log-loss", "macro_acc")))]
+
+setorderv(multi_english_arg, c("language", "dataset", "type", "model", "measure"))
+setnames(multi_english_arg, paste("level", 0:4), paste0("level", 0:4))
+setcolorder(multi_english_arg, c("language", "dataset", "type", "model", "measure"))
+```
+
+```{r}
+multi_english_her <- py_load_object("../results/NAWA-trans-multi-en-herbert-results.pickle", convert = T)
+multi_english_her <- lapply(multi_english_her, rbindlist)
+multi_english_her <- lapply(multi_english_her, \(x) { 
+  if (nrow(x) == 56) {
+    x[, measure:=rep(measures, times = 2)]
+    x[, model:=rep(c("tra_top_rob", "tra_bot_rob"), each = 56/2)]
+    }
+  else {
+    x[, measure:=measures]
+    x[, model:=rep(c("tra_top_rob", "tra_bot_rob"), each = 28/2)]
+  }
+  })
+
+multi_english_her <- rbindlist(multi_english_her, idcol = "dataset")
+multi_english_her <- multi_english_her[str_detect(measure, "recall\\@(1|2|3|4|5)$|log|macro")]
+multi_english_her[, measure:=str_remove(measure, "acc/")]
+
+multi_english_her[, ":="(dataset = factor(dataset, 
+                                          c("overall", "cbop", "hand", "esco", "info",  "kprm", "official", "gus"),
+                                          c("Overall", "CBOP", "Hand-coded", "ESCO", "Info+",  "KPRM", "OfficialDict", "Thesaurus")),
+                     type = factor(type, c("train", "test"), c("Train dataset", "Test dataset")),
+                     language = "English", 
+                     model = factor(model, c("tra_bot_rob", "tra_top_rob"), 
+                                    c("Transformer(rob,bottom,her)", "Transformer(rob,top,her)")),
+                     measure = factor(measure, c("recall@1", "recall@2", "recall@3", "recall@4", "recall@5", "log-loss", "macro_acc")))]
+
+setorderv(multi_english_her, c("language", "dataset", "type", "model", "measure"))
+setnames(multi_english_her, paste("level", 0:4), paste0("level", 0:4))
+setcolorder(multi_english_her, c("language", "dataset", "type", "model", "measure"))
+```
+
+
+
+```{r}
+rbind(multi_polish[, trans:="Google"], multi_english[, trans:="Google"], 
+      multi_polish_arg[, trans:="Argos"], multi_english_arg[, trans:="Argos"],
+      multi_english_her[, trans:=""]) |>
+  melt(id.vars = c("trans", "language", "dataset", "type", "model", "measure")) |>
+  subset(dataset %in% c("Overall", "CBOP", "Hand-coded") 
+         & measure %in% c("recall@1") 
+         & type == "Test dataset"
+         )  |>
+  transform(model=paste0(language, " ", model, " (", trans, ")")) |>
+  transform(variable = factor(variable, paste0("level", 0:4), 
+                              c("1 digit", "2 digits", "3 digits", "4 digits\nISCO", "6 digits")),
+            model = factor(model, 
+                           levels = c("Polish Transformer(rob,bottom) (Google)", 
+                                      "Polish Transformer(rob,top) (Google)", 
+                                      "English Transformer(rob,bottom) (Google)", 
+                                      "English Transformer(rob,top) (Google)", 
+                                      "Polish Transformer(rob,bottom) (Argos)", 
+                                      "Polish Transformer(rob,top) (Argos)", 
+                                      "English Transformer(rob,bottom) (Argos)", 
+                                      "English Transformer(rob,top) (Argos)", 
+                                      "English Transformer(rob,bottom,her) ()", 
+                                      "English Transformer(rob,top,her) ()"),
+                           labels = c("Polish Transformer (XLM-RoBERTa-base), bottom-up (Google)", 
+                                      "Polish Transformer (XLM-RoBERTa-base), top-down (Google)", 
+                                      "English Transformer (XLM-RoBERTa-base), bottom-up (Google)", 
+                                      "English Transformer (XLM-RoBERTa-base), top-down (Google)", 
+                                      "Polish Transformer (XLM-RoBERTa-base), bottom-up (Argos)", 
+                                      "Polish Transformer (XLM-RoBERTa-base), top-down (Argos)", 
+                                      "English Transformer (XLM-RoBERTa-base), bottom-up (Argos)", 
+                                      "English Transformer (XLM-RoBERTa-base), top-down (Argos)", 
+                                      "English Transformer (HerBERT-base), bottom-up", 
+                                      "English Transformer (HerBERT-base), top-down"))) -> data_for_plot
+  
+```
+
+```{r}
+ggplot(data = data_for_plot, aes(x = variable, 
+                       y = value, 
+                       group = model, 
+                       fill = model)) +
+  geom_col(position = "dodge", color = "black") +
+  geom_text(aes(label = scales::percent(value, scale=1,accuracy = 0.1,suffix="")), 
+            position = position_dodge(width = 0.9), 
+            vjust = 0.5,
+            hjust = -0.25,
+            size = 1.75,
+            angle = 0) + 
+  facet_wrap(~dataset, ncol = 2) +
+  scale_fill_brewer(type = "qual", palette = "Paired") +
+  scale_x_discrete(limits = rev(levels(data_for_plot$variable))) +
+  scale_y_continuous(breaks = seq(0,90,10)) + 
+  labs(x = "Occupation digit", y = "Accuracy (Recall@1)", fill = "Classifier") +
+  theme(legend.position = c(1, 0.5), legend.justification = c(1.25, 1.25)) +
+  coord_flip() + 
+  guides(fill = guide_legend(reverse = TRUE)) -> p2
+
+ggsave(plot=p2,filename = "../figs/fig2-recall1.pdf", width = 12, height = 12)
+```
+
