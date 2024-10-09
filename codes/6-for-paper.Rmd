@@ -1,0 +1,25 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(ggplot2)
+library(data.table)
+```
+
+
+```{r}
+train <- fread("https://repod.icm.edu.pl/api/access/datafile/45837", colClasses = "character")
+test <- fread("https://repod.icm.edu.pl/api/access/datafile/45836", colClasses = "character")
+```
+
+```{r}
+data <- rbind(train,test)[, .N, class][order(-N)][, id:=1:.N]
+
+ggplot(data=data, aes(x = id, y = N, group = 1)) +
+  geom_line() +
+  scale_y_log10() + 
+  labs(y = "Training examples (log scale)", x = "Label frequency rank")
+```
+
