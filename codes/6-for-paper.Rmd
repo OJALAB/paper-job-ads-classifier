@@ -20,6 +20,12 @@ data <- rbind(train,test)[, .N, class][order(-N)][, id:=1:.N]
 ggplot(data=data, aes(x = id, y = N, group = 1)) +
   geom_line() +
   scale_y_log10() + 
-  labs(y = "Training examples (log scale)", x = "Label frequency rank")
+  labs(y = "Training examples (log scale)", x = "Label frequency rank") -> p3
+
+```
+
+
+```{r}
+ggsave(plot =p3, file = "../figs/fig3-freq.pdf", width = 8, height = 5)
 ```
 
