@@ -10,6 +10,7 @@ library(ggplot2)
 library(stringr)
 library(survey)
 library(xtable)
+library(irr)  ##kappam.fleiss
 options(survey.lonely.psu = "adjust")
 ```
 
@@ -79,7 +80,13 @@ expert_quality <- hand_selected[id_ogl %in% hand_selected[!is.na(id_ogl), .N, id
             pair23_d4 = substr(e_2,1,4) == substr(e_3,1,4),
             pair12_d6 = substr(e_1,1,6) == substr(e_2,1,6),
             pair13_d6 = substr(e_1,1,6) == substr(e_3,1,6),
-            pair23_d6 = substr(e_2,1,6) == substr(e_3,1,6)
+            pair23_d6 = substr(e_2,1,6) == substr(e_3,1,6),
+            e_1_1 = as.factor(substr(e_1,1,1)),
+            e_2_1 = as.factor(substr(e_2,1,1)),
+            e_3_1 = as.factor(substr(e_3,1,1)),
+            e_1_2 = as.factor(substr(e_1,1,2)),
+            e_2_2 = as.factor(substr(e_2,1,2)),
+            e_3_2 = as.factor(substr(e_3,1,2))
             ) |>
   ## overall comparisons
   transform(all_d1 = pair12_d1 & pair13_d1 & pair23_d1,
@@ -107,6 +114,19 @@ ci_results_df <- lapply(ci_results, function(x) data.frame(var=names(x), point =
 ci_results_df <- rbindlist(ci_results_df)
 ci_results_df[, var:=str_extract(var, "(pair\\d{2}|all)_d\\d{1}")]
 ```
+
+Kappa
+
+```{r}
+svykappa(~e_1_1+e_2_1, expert_quality_svy) |> {\(x) round(c(x[1]*100,confint(x)*100),1)}() 
+svykappa(~e_1_1+e_3_1, expert_quality_svy) |> {\(x) round(c(x[1]*100,confint(x)*100),1)}()
+svykappa(~e_2_1+e_3_1, expert_quality_svy) |> {\(x) round(c(x[1]*100,confint(x)*100),1)}()
+```
+
+```{r}
+kappam.fleiss(expert_quality_svy$variables[, c("e_1_1", "e_2_1", "e_3_1")], detail = T)
+```
+
 
 Reporting
 
@@ -185,7 +205,10 @@ expert_quality_after <- hand_selected[id_ogl %in% hand_selected[!is.na(id_ogl), 
             pair23_d4 = substr(e_2,1,4) == substr(e_3,1,4),
             pair12_d6 = substr(e_1,1,6) == substr(e_2,1,6),
             pair13_d6 = substr(e_1,1,6) == substr(e_3,1,6),
-            pair23_d6 = substr(e_2,1,6) == substr(e_3,1,6)
+            pair23_d6 = substr(e_2,1,6) == substr(e_3,1,6),
+            e_1_1 = substr(e_1,1,1),
+            e_2_1 = substr(e_2,1,1),
+            e_3_1 = substr(e_3,1,1)
             ) |>
   ## overall comparisons
   transform(all_d1 = pair12_d1 & pair13_d1 & pair23_d1,
@@ -195,6 +218,7 @@ expert_quality_after <- hand_selected[id_ogl %in% hand_selected[!is.na(id_ogl), 
 
 
 ```
+
 
 
 Estimate the quality along with standard errors
@@ -212,6 +236,19 @@ ci_results_df <- lapply(ci_results, function(x) data.frame(var=names(x), point =
 
 ci_results_df <- rbindlist(ci_results_df)
 ci_results_df[, var:=str_extract(var, "(pair\\d{2}|all)_d\\d{1}")]
+```
+
+
+Kappa
+
+```{r}
+svykappa(~e_1_1+e_2_1, expert_quality_after_svy) |> {\(x) round(c(x[1]*100,confint(x)*100),1)}() 
+svykappa(~e_1_1+e_3_1, expert_quality_after_svy) |> {\(x) round(c(x[1]*100,confint(x)*100),1)}()
+svykappa(~e_2_1+e_3_1, expert_quality_after_svy) |> {\(x) round(c(x[1]*100,confint(x)*100),1)}()
+```
+
+```{r}
+kappam.fleiss(expert_quality_after_svy$variables[, c("e_1_1", "e_2_1", "e_3_1")], exact = T, detail = T)
 ```
 
 Reporting
@@ -255,6 +292,10 @@ cbop_hand[, ":="(d1 = substr(kod_zawodu,1,1) == substr(kod_zawodu_cbop,1,1),
 
 cbop_hand[, ":="(d_expert= substr(kod_zawodu,1,1), 
                  d_cbop = substr(kod_zawodu_cbop,1,1))]
+
+cbop_hand <- cbop_hand[!(d_expert %in% c(1,6) | d_cbop %in% c(1,6))]
+
+
 ```
 
 Quality of CBOP by expert
@@ -273,7 +314,18 @@ ci_results_df <- lapply(ci_results, function(x) {
 
 ci_results_df <- rbindlist(ci_results_df)
 ci_results_df[, var:=str_extract(var, "d\\d{1}")]
+
 ```
+
+Kappa for experts
+
+```{r}
+svykappa(~d_expert+d_cbop, cbop_hand_svy) |> {\(x) round(c(x[1]*100,confint(x)*100),1)}() 
+svykappa(~d_expert+d_cbop, subset(cbop_hand_svy, ekspert == 1)) |> {\(x) round(c(x[1]*100,confint(x)*100),1)}() 
+svykappa(~d_expert+d_cbop, subset(cbop_hand_svy, ekspert == 2)) |> {\(x) round(c(x[1]*100,confint(x)*100),1)}() 
+svykappa(~d_expert+d_cbop, subset(cbop_hand_svy, ekspert == 3)) |> {\(x) round(c(x[1]*100,confint(x)*100),1)}() 
+```
+
 
 Report result
 
