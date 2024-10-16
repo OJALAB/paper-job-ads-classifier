@@ -745,7 +745,7 @@ Wszystkie kody w tym wyniku zostały zweryfikowane i pochodzą z pliku kzis-hier
 
 # prompt
 
-nie prawda bo dla tych numerów ogłoszeń (id_ogl) kody nie istnieją 
+nieprawda bo dla tych numerów ogłoszeń (id_ogl) kody nie istnieją 
 
 ```
 336472	- 233008
