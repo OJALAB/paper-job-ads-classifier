@@ -6,6 +6,8 @@ output: html_notebook
 ```{r}
 library(ggplot2)
 library(data.table)
+library(stringr)
+library(xtable)
 ```
 
 
@@ -27,5 +29,91 @@ ggplot(data=data, aes(x = id, y = N, group = 1)) +
 
 ```{r}
 ggsave(plot =p3, file = "../figs/fig3-freq.pdf", width = 8, height = 5)
+```
+
+Multilingual dataset (sample)
+
+
+
+```{r}
+test_multi <- fread("~/Downloads/test-multilang-sample.csv", colClasses = "character")
+test_multi[, lang:=basename(file)]
+test_multi[lang == "english_train", lang := "en."]
+test_multi[lang == "polish_test", lang := "pl."]
+test_multi[ , lang:=str_extract(lang, "[a-z]{2}\\.")]
+train_multi <- fread("~/Downloads/train-multilang-sample.csv", colClasses = "character")
+train_multi[, lang:=basename(file)]
+train_multi[lang == "english_test", lang := "en."]
+train_multi[lang == "polish_train", lang := "pl."]
+train_multi[ , lang:=str_extract(lang, "[a-z]{2}\\.")]
+```
+
+
+Comparison with the distribution of languages in XLM-Roberta
+
+```{r}
+train_multi[, .(N=.N, class=uniqueN(class)), source]
+test_multi[, .(N=.N, class=uniqueN(class)), source]
+
+```
+
+```{r}
+# Create data frame with languages statistics
+cc_100_stats <- data.table(
+  iso_code = c(
+    # First part
+    "af", "am", "ar", "as", "az", "be", "bg", "bn", "bn", "br", "bs", "ca", "cs", "cy",
+    "da", "de", "el", "en", "eo", "es", "et", "eu", "fa", "fi", "fr", "fy", "ga", "gd",
+    "gl", "gu", "ha", "he", "hi", "hi", "hr", "hu", "hy", "id", "is", "it", "ja", "jv",
+    "ka", "kk", "km", "kn", "ko", "ku", "ky", "la",
+    # Second part
+    "lo", "lt", "lv", "mg", "mk", "ml", "mn", "mr", "ms", "my", "my", "ne", "nl", "no",
+    "om", "or", "pa", "pl", "ps", "pt", "ro", "ru", "sa", "sd", "si", "sk", "sl", "so",
+    "sq", "sr", "su", "sv", "sw", "ta", "ta", "te", "te", "th", "tl", "tr", "ug", "uk",
+    "ur", "ur", "uz", "vi", "xh", "yi", "zh", "zh"
+  ),
+  tokens_M = c(
+    # First part
+    242, 68, 2869, 5, 783, 362, 5487, 525, 77, 16, 14, 1752, 2498, 141,
+    7823, 10297, 4285, 55608, 157, 9374, 843, 270, 13259, 6730, 9780, 29, 86, 21,
+    495, 140, 56, 3399, 1715, 88, 3297, 7807, 421, 22704, 505, 4983, 530, 24,
+    469, 476, 36, 169, 5644, 66, 94, 390,
+    # Second part
+    17, 1835, 1198, 25, 449, 313, 248, 175, 1318, 15, 56, 237, 5025, 8494,
+    8, 36, 68, 6490, 96, 8405, 10354, 23408, 17, 50, 243, 3525, 1669, 62,
+    918, 843, 10, 77.8, 275, 595, 36, 249, 39, 1834, 556, 2736, 27, 6.5,
+    730, 85, 91, 24757, 13, 34, 259, 176
+  ),
+  size_GiB = c(
+    # First part
+    1.3, 0.8, 28.0, 0.1, 6.5, 4.3, 57.5, 8.4, 0.5, 0.1, 0.1, 10.1, 16.3, 0.8,
+    45.6, 66.6, 46.9, 300.8, 0.9, 53.3, 6.1, 2.0, 111.6, 54.3, 56.8, 0.2, 0.5, 0.1,
+    2.9, 1.9, 0.3, 31.6, 20.2, 0.5, 20.5, 58.4, 5.5, 148.3, 3.2, 30.2, 69.3, 0.2,
+    9.1, 6.4, 1.5, 3.3, 54.2, 0.4, 1.2, 2.5,
+    # Second part
+    0.6, 13.7, 8.8, 0.2, 4.8, 7.6, 3.0, 2.8, 8.5, 0.4, 1.6, 3.8, 29.3, 49.0,
+    0.1, 0.6, 0.8, 44.6, 0.7, 49.1, 61.4, 278.0, 0.3, 0.4, 3.6, 23.2, 10.3, 0.4,
+    5.4, 9.1, 0.1, 12.1, 1.6, 12.2, 0.3, 4.7, 0.3, 71.7, 3.1, 20.9, 0.4, 84.6,
+    5.7, 0.5, 0.7, 137.3, 0.1, 0.3, 46.9, 16.6
+  )
+)
+
+```
+
+
+```{r}
+merge(x = train_multi[, .(train=.N), lang],
+      y = test_multi[, .(test=.N), lang], 
+      by = "lang") -> lang_tabs
+
+lang_tabs[, p_train:=train/sum(train)*100]
+lang_tabs[, p_test:=test/sum(test)*100]
+lang_tabs[, lang:=str_remove(lang, fixed("."))]
+
+lang_tabs[cc_100_stats[, .(lang=iso_code, tokens=tokens_M)], on = "lang", roberta:=i.tokens]
+lang_tabs[, p_roberta := roberta/sum(roberta)*100]
+
+xtable(lang_tabs) |>
+  print.xtable(include.rownames = F)
 ```
 

@@ -10,6 +10,7 @@ library(data.table)
 library(ggplot2)
 library(xtable)
 library(ggh4x)
+library(countrycode)
 ```
 
 
@@ -665,5 +666,116 @@ for (overall_level in overall_levels) {
 
 # Write all LaTeX output to a single file
 writeLines(all_latex_output, "../results/appendix-tab-class-roberta.tex")
+```
+
+## Results for multilang dataset (hand only)
+
+```{r}
+multilang <- py_load_object("../results/NAWA-trans-multi-hand.pickle", convert = T)
+multilang <- lapply(multilang, rbindlist)
+multilang <- lapply(multilang, \(x) { 
+  if (nrow(x) == 56) {
+    x[, measure:=rep(measures, times = 2)]
+    x[, model:=rep(c("tra_top_rob", "tra_bot_rob"), each = 56/2)]
+    }
+  else {
+    x[, measure:=measures]
+    x[, model:=rep(c("tra_top_rob", "tra_bot_rob"), each = 28/2)]
+  }
+  })
+
+multilang <- rbindlist(multilang, idcol = "dataset")
+multilang <- multilang[str_detect(measure, "recall\\@(1|2|3|4|5)$|log|macro")]
+multilang[, measure:=str_remove(measure, "acc/")]
+multilang[, lang:=str_extract(dataset, "[a-z]{2}\\.")]
+multilang[, lang:=str_remove(lang, fixed("."))]
+
+multilang_for_plot <- multilang[measure == "recall@1", 
+                                .(digits1=`level 0`, digits4=`level 3`, digits6=`level 4`), 
+                                .(model = factor(model, c("tra_bot_rob", "tra_top_rob"), c("bottom-up", "top-down")),
+                                  lang = factor(lang, 
+                                                c("bg", "cs", "da", "de", "el", "en", "es", "et", "fi", "fr", 
+                    "ga", "hu", "it", "lt", "lv", "nl", "pl", "pt", "ro", "ru", 
+                    "sk", "sl", "sv", "uk"),
+                                                c("Bulgarian", "Czech", "Danish", "German", "Greek", "English",
+                   "Spanish", "Estonian", "Finnish", "French", "Irish", "Hungarian",
+                   "Italian", "Lithuanian", "Latvian", "Dutch", "Polish", 
+                   "Portuguese", "Romanian", "Russian", "Slovak", "Slovenian",
+                   "Swedish", "Ukrainian")))] |>
+  melt(id.vars = c("model", "lang")) |>
+  transform(variable = factor(variable, c("digits1", "digits4", "digits6"), c("1 digit", "4 digits\nISCO", "6 digits\nKZiS")))
+
+multilang_for_plot |>
+  ggplot(data = _, aes(x = reorder(lang, -value), y = value, color = variable, shape = model)) +
+  geom_point(size = 2.5) +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+  scale_color_brewer(type = "qual", palette = "Set1")  +
+  scale_y_continuous(breaks = seq(0, 100, 5), limits = c(45, 85)) +
+  labs(shape = "Approach", color = "Occupation\ncode", x = "", y = "Recall @1") -> p_multi
+
+ggsave(plot = p_multi, file = "../figs/fig-multi-recall.pdf", width = 10)
+```
+
+```{r}
+multilang_for_plot |>
+  dcast(lang + variable ~ model, value.var = "value") |>
+  transform(flag = `top-down` > `bottom-up`) |> 
+  aggregate(flag~variable, data = _, FUN = mean)
+```
+
+```{r}
+# Create dataframe with accuracy scores
+accuracy_df <- data.frame(
+  language = c("Greek", "German", "Irish", "Latvian", "Czech", "Slovenian", 
+               "Hungarian", "Spanish", "Ukrainian", "Bulgarian", "Russian", 
+               "French", "Portuguese", "Danish", "Finnish", "Swedish", "Dutch",
+               "Romanian", "Italian", "Estonian", "Lithuanian", "Slovak", 
+               "Polish", "English"),
+  accuracy = c(77.14, 79.10, 75.65, 78.23, 79.54, 78.26, 78.29, 77.88, 
+               76.44, 78.39, 77.82, 78.99, 78.34, 78.69, 77.17, 79.48, 
+               79.16, 79.21, 77.03, 79.35, 78.80, 79.81, 79.55, 79.77)
+)
+
+# Create dataframe with roberta information
+roberta_df <- data.frame(
+  language = c("Bulgarian", "Czech", "Danish", "German", "Greek", "English", 
+               "Spanish", "Estonian", "Finnish", "French", "Irish", "Hungarian",
+               "Italian", "Lithuanian", "Latvian", "Dutch", "Polish", 
+               "Portuguese", "Romanian", "Russian", "Slovak", "Slovenian",
+               "Swedish", "Ukrainian"),
+  train = c(12.3, 13.3, 15.4, 15.7, 14.5, 14.2, 16.0, 16.5, 14.6, 18.8, 
+            14.2, 15.0, 12.2, 13.8, 14.4, 12.9, 12.2, 14.4, 12.3, 12.5, 
+            16.4, 13.4, 14.1, 14.4),
+  test = c(7.7, 11.1, 7.4, 8.0, 8.3, 9.3, 7.9, 7.7, 7.9, 11.3, 8.0, 9.3, 
+           7.6, 7.2, 8.1, 7.6, 7.3, 10.2, 9.8, 9.5, 10.5, 8.2, 10.2, 7.8),
+  roberta_tokens = c(5.5, 2.5, 7.8, 10.3, 4.3, 55.6, 9.4, 0.8, 6.7, 9.8, 
+                     0.1, 7.8, 5.0, 1.8, 1.2, 5.0, 6.5, 8.4, 10.4, 23.4, 
+                     3.5, 1.7, 0.1, 0.0),
+  roberta_share = c(4.4, 2.0, 6.2, 8.2, 3.4, 44.3, 7.5, 0.7, 5.4, 7.8, 
+                    0.1, 6.2, 4.0, 1.5, 1.0, 4.0, 5.2, 6.7, 8.3, 18.7, 
+                    2.8, 1.3, 0.1, 0.0)
+)
+
+# Merge the dataframes
+final_df <- merge(accuracy_df, roberta_df, by = "language")
+
+# Order columns as desired
+final_df <- final_df[, c("language", "accuracy", "train", "test", 
+                        "roberta_tokens", "roberta_share")]
+
+# View the first few rows
+head(final_df)
+```
+
+```{r}
+cor(final_df$train, final_df$accuracy, m = "s")
+cor(final_df$train, final_df$accuracy, m = "p")
+
+cor(final_df$test, final_df$accuracy, m = "s")
+cor(final_df$test, final_df$accuracy, m = "p")
+
+cor(final_df$roberta_tokens, final_df$accuracy, m = "s")
+cor(final_df$roberta_tokens, final_df$accuracy, m = "p")
+
 ```
 
