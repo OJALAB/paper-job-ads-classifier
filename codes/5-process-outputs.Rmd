@@ -12,6 +12,7 @@ library(xtable)
 library(ggh4x)
 library(countrycode)
 library(openxlsx)
+library(forcats)
 ```
 
 
@@ -672,7 +673,7 @@ writeLines(all_latex_output, "../results/appendix-tab-class-roberta.tex")
 ## Results for multilang dataset (hand only)
 
 ```{r}
-multilang <- py_load_object("../results/NAWA-trans-multi-hand.pickle", convert = T)
+multilang <- py_load_object("../results/NAWA-trans-multi-overall.pickle", convert = T)
 multilang <- lapply(multilang, rbindlist)
 multilang <- lapply(multilang, \(x) { 
   if (nrow(x) == 56) {
@@ -680,7 +681,7 @@ multilang <- lapply(multilang, \(x) {
     x[, model:=rep(c("tra_top_rob", "tra_bot_rob"), each = 56/2)]
     }
   else {
-    x[, measure:=measures]
+    x[, measure:=rep(measures, times = 1)]
     x[, model:=rep(c("tra_top_rob", "tra_bot_rob"), each = 28/2)]
   }
   })
@@ -688,10 +689,69 @@ multilang <- lapply(multilang, \(x) {
 multilang <- rbindlist(multilang, idcol = "dataset")
 multilang <- multilang[str_detect(measure, "recall\\@(1|2|3|4|5)$|log|macro")]
 multilang[, measure:=str_remove(measure, "acc/")]
+
+multilang[measure == "recall@1" & type == "test" & dataset %in% c("overall", "cbop", "hand")][
+  , .(dataset, model, digit1=`level 0`, digit2=`level 1`, isco=`level 3`, kzis=`level 4`)] |>
+  xtable() |>
+  print.xtable(include.rownames = F)
+```
+
+Hand-coded data only (whole dataset)
+```{r}
+multilang <- py_load_object("../results/NAWA-trans-multi-hand.pickle", convert = T)
+multilang <- lapply(multilang, rbindlist)
+multilang <- lapply(multilang, \(x) { 
+    x[, measure:=measures]
+    x[, model:=rep(c("tra_top_rob", "tra_bot_rob"), each = 28/2)]
+  })
+
+multilang <- rbindlist(multilang, idcol = "dataset")
+multilang <- multilang[str_detect(measure, "recall\\@(1|2|3|4|5)$|log|macro")]
+multilang[, measure:=str_remove(measure, "acc/")]
 multilang[, lang:=str_extract(dataset, "[a-z]{2}\\.")]
 multilang[, lang:=str_remove(lang, fixed("."))]
+```
 
-multilang_for_plot <- multilang[measure == "recall@1", 
+Test data (sample)
+```{r}
+multilang_langs <- py_load_object("../results/NAWA-trans-multi-overall-lang.pickle", convert = T)
+
+for (i in 1:length(multilang_langs)) {
+  for (j in 1:3) {
+    multilang_langs[[i]][[j]] <- rbindlist(multilang_langs[[i]][[j]])
+    multilang_langs[[i]][[j]][, measure:=rep(measures, times = 2)]
+    multilang_langs[[i]][[j]][, model:=rep(c("tra_top_rob", "tra_bot_rob"), each = 56/2)]
+  }
+  }
+
+
+multilang_langs <- lapply(multilang_langs, rbindlist, idcol = "dataset")
+
+multilang_langs <- rbindlist(multilang_langs, idcol = "lang")
+multilang_langs <- multilang_langs[str_detect(measure, "recall\\@(1|2|3|4|5)$|log|macro")]
+multilang_langs[, measure:=str_remove(measure, "acc/")]
+multilang_langs[, lang:=str_extract(lang, "[a-z]{2}\\.")]
+multilang_langs[, lang:=str_remove(lang, fixed("."))]
+```
+
+```{r}
+prepare_sorted_data <- function(data, x_col, y_col, facet_col) {
+  # Get the ordering from the first facet
+  order_df <- data %>%
+    filter(!!sym(facet_col) == first(!!sym(facet_col))) %>%
+    arrange(desc(!!sym(y_col))) %>%
+    select(!!sym(x_col))
+  
+  # Convert x column to factor with levels based on the order
+  data %>%
+    mutate(!!sym(x_col) := factor(!!sym(x_col), 
+                                 levels = order_df[[x_col]]))
+}
+```
+
+
+```{r}
+multilang_for_plot_sample <- multilang_langs[measure == "recall@1" & dataset == "hand" & type == "test", 
                                 .(digits1=`level 0`, digits4=`level 3`, digits6=`level 4`), 
                                 .(model = factor(model, c("tra_bot_rob", "tra_top_rob"), c("bottom-up", "top-down")),
                                   lang = factor(lang, 
@@ -704,15 +764,42 @@ multilang_for_plot <- multilang[measure == "recall@1",
                    "Portuguese", "Romanian", "Russian", "Slovak", "Slovenian",
                    "Swedish", "Ukrainian")))] |>
   melt(id.vars = c("model", "lang")) |>
-  transform(variable = factor(variable, c("digits1", "digits4", "digits6"), c("1 digit", "4 digits\nISCO", "6 digits\nKZiS")))
+  transform(variable = factor(variable, c("digits1", "digits4", "digits6"), c("1 digit", "4 digits\nISCO", "6 digits\nKZiS")),
+            sample = "sample")
 
+multilang_for_plot_whole <- multilang[measure == "recall@1", 
+                                .(digits1=`level 0`, digits4=`level 3`, digits6=`level 4`), 
+                                .(model = factor(model, c("tra_bot_rob", "tra_top_rob"), c("bottom-up", "top-down")),
+                                  lang = factor(lang, 
+                                                c("bg", "cs", "da", "de", "el", "en", "es", "et", "fi", "fr", 
+                    "ga", "hu", "it", "lt", "lv", "nl", "pl", "pt", "ro", "ru", 
+                    "sk", "sl", "sv", "uk"),
+                                                c("Bulgarian", "Czech", "Danish", "German", "Greek", "English",
+                   "Spanish", "Estonian", "Finnish", "French", "Irish", "Hungarian",
+                   "Italian", "Lithuanian", "Latvian", "Dutch", "Polish", 
+                   "Portuguese", "Romanian", "Russian", "Slovak", "Slovenian",
+                   "Swedish", "Ukrainian")))] |>
+  melt(id.vars = c("model", "lang")) |>
+  transform(variable = factor(variable, c("digits1", "digits4", "digits6"), c("1 digit", "4 digits\nISCO", "6 digits\nKZiS")),
+            sample = "whole")
+
+multilang_for_plot <- rbind(multilang_for_plot_sample, multilang_for_plot_whole) |>
+  transform(sample = factor(sample, c("whole", "sample"), c("Whole test dataset", "Sample only")))
+
+factor_orders <- as.character(multilang_for_plot[sample == "Whole test dataset" & variable == "6 digits\nKZiS" & model=="bottom-up"][order(-value)]$lang)
+```
+
+
+```{r}
 multilang_for_plot |>
-  ggplot(data = _, aes(x = reorder(lang, -value), y = value, color = variable, shape = model)) +
+  transform(lang = factor(lang, factor_orders)) |>
+  ggplot(data = _, aes(x = lang, y = value, color = variable, shape = model)) +
   geom_point(size = 2.5) +
   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
   scale_color_brewer(type = "qual", palette = "Set1")  +
-  scale_y_continuous(breaks = seq(0, 100, 5), limits = c(45, 85)) +
-  labs(shape = "Approach", color = "Occupation\ncode", x = "", y = "Recall @1") -> p_multi
+  #scale_y_continuous(breaks = seq(0, 100, 5), limits = c(45, 85)) +
+  labs(shape = "Approach", color = "Occupation\ncode", x = "", y = "Recall @1") +
+  facet_wrap(~sample, ncol = 2)-> p_multi
 
 ggsave(plot = p_multi, file = "../figs/fig-multi-recall.pdf", width = 10)
 ```
@@ -722,8 +809,8 @@ multilang_for_plot |>
   dcast(lang + variable ~ model, value.var = "value") |>
   transform(flag = `top-down` > `bottom-up`,
             diff = `top-down` - `bottom-up`) |> 
-  subset(variable == "4 digits\nISCO") |>
-  summary()
+  #subset(variable == "4 digits\nISCO") |>
+  #summary()
   aggregate(flag~variable, data = _, FUN = mean)
 ```
 
