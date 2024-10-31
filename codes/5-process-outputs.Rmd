@@ -11,6 +11,7 @@ library(ggplot2)
 library(xtable)
 library(ggh4x)
 library(countrycode)
+library(openxlsx)
 ```
 
 
@@ -719,9 +720,43 @@ ggsave(plot = p_multi, file = "../figs/fig-multi-recall.pdf", width = 10)
 ```{r}
 multilang_for_plot |>
   dcast(lang + variable ~ model, value.var = "value") |>
-  transform(flag = `top-down` > `bottom-up`) |> 
+  transform(flag = `top-down` > `bottom-up`,
+            diff = `top-down` - `bottom-up`) |> 
+  subset(variable == "4 digits\nISCO") |>
+  summary()
   aggregate(flag~variable, data = _, FUN = mean)
 ```
+
+
+Save reports to excel
+
+```{r}
+excel_results <- createWorkbook(creator =  "Maciej Beręsewicz", 
+                                title = "Results for the paper 'Multilingual hierarchical classification of job advertisements for job vacancy statistics'")
+
+addWorksheet(excel_results, "Polish-lang-only")
+writeData(wb = excel_results, 
+          x=rbind(linear_results_df, transformer_results_df, transformer_large_results_df), 
+          sheet = "Polish-lang-only",
+          withFilter = T)
+
+addWorksheet(excel_results, "Bilingual")
+writeData(wb = excel_results, 
+          x=rbind(multi_polish[, trans:="Google"], multi_english[, trans:="Google"], 
+                multi_polish_arg[, trans:="Argos"], multi_english_arg[, trans:="Argos"],
+                multi_english_her[, trans:=""],
+                transformer_results_df[model %in% c("Transformer(bottom)", "Transformer(top)")][, trans:=""][, language:="Polish"]), 
+          sheet = "Bilingual",
+          withFilter = T)
+
+addWorksheet(excel_results, "Multilingual")
+writeData(wb = excel_results, 
+          x=multilang, sheet = "Multilingual",
+          withFilter = T)
+
+saveWorkbook(excel_results, file = "../results/Supplementary-Materials.xlsx", overwrite = T)
+```
+
 
 ```{r}
 # Create dataframe with accuracy scores
