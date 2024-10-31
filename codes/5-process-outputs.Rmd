@@ -673,9 +673,9 @@ writeLines(all_latex_output, "../results/appendix-tab-class-roberta.tex")
 ## Results for multilang dataset (hand only)
 
 ```{r}
-multilang <- py_load_object("../results/NAWA-trans-multi-overall.pickle", convert = T)
-multilang <- lapply(multilang, rbindlist)
-multilang <- lapply(multilang, \(x) { 
+multilang_overall <- py_load_object("../results/NAWA-trans-multi-overall.pickle", convert = T)
+multilang_overall <- lapply(multilang_overall, rbindlist)
+multilang_overall <- lapply(multilang_overall, \(x) { 
   if (nrow(x) == 56) {
     x[, measure:=rep(measures, times = 2)]
     x[, model:=rep(c("tra_top_rob", "tra_bot_rob"), each = 56/2)]
@@ -686,17 +686,18 @@ multilang <- lapply(multilang, \(x) {
   }
   })
 
-multilang <- rbindlist(multilang, idcol = "dataset")
-multilang <- multilang[str_detect(measure, "recall\\@(1|2|3|4|5)$|log|macro")]
-multilang[, measure:=str_remove(measure, "acc/")]
+multilang_overall <- rbindlist(multilang_overall, idcol = "dataset")
+multilang_overall <- multilang_overall[str_detect(measure, "recall\\@(1|2|3|4|5)$|log|macro")]
+multilang_overall[, measure:=str_remove(measure, "acc/")]
 
-multilang[measure == "recall@1" & type == "test" & dataset %in% c("overall", "cbop", "hand")][
+multilang_overall[measure == "recall@1" & type == "test" & dataset %in% c("overall", "cbop", "hand")][
   , .(dataset, model, digit1=`level 0`, digit2=`level 1`, isco=`level 3`, kzis=`level 4`)] |>
   xtable() |>
   print.xtable(include.rownames = F)
 ```
 
 Hand-coded data only (whole dataset)
+
 ```{r}
 multilang <- py_load_object("../results/NAWA-trans-multi-hand.pickle", convert = T)
 multilang <- lapply(multilang, rbindlist)
@@ -838,7 +839,7 @@ writeData(wb = excel_results,
 
 addWorksheet(excel_results, "Multilingual")
 writeData(wb = excel_results, 
-          x=multilang, sheet = "Multilingual",
+          x=rbind(multilang,multilang_overall,multilang_langs, fill = T), sheet = "Multilingual",
           withFilter = T)
 
 saveWorkbook(excel_results, file = "../results/Supplementary-Materials.xlsx", overwrite = T)
