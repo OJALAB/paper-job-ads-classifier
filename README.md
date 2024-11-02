@@ -8,7 +8,7 @@
 -   `figs/`
      - igures for the paper
 -   `results/`:
-    - results from python (`picle` files)
+    - results from python (`pickle` files)
     - `models-accuracy.xlsx` -- MS Excel file with results for each model
 
 ## Software
