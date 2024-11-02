@@ -25,6 +25,8 @@ measures <- c('acc/recall@1', 'macro_acc', 'recall@2', 'recall@3', 'recall@4',
        'mse_single_pred_dist', 'recall@10')
 ```
 
+Linear models results
+
 ```{r}
 linear_results <- py_load_object("../results/NAWA-linear-results.pickle", convert = T)
 linear_results <- lapply(linear_results, rbindlist)
@@ -56,7 +58,7 @@ setnames(linear_results_df, paste("level", 0:4), paste0("level", 0:4))
 setcolorder(linear_results_df, c("dataset", "type", "model", "measure"))
 ```
 
-Transformer
+Transformer results for Polish language
 
 
 ```{r}
@@ -90,6 +92,8 @@ setnames(transformer_results_df, paste("level", 0:4), paste0("level", 0:4))
 setcolorder(transformer_results_df, c("dataset", "type", "model", "measure"))
 ```
 
+Transformer (large) results for Polish
+
 ```{r}
 transformer_large_results <- py_load_object("../results/NAWA-trans-large-results.pickle", convert = T)
 transformer_large_results <- lapply(transformer_large_results, rbindlist)
@@ -122,6 +126,8 @@ setorderv(transformer_large_results_df, c("dataset", "type", "model", "measure")
 setnames(transformer_large_results_df, paste("level", 0:4), paste0("level", 0:4))
 setcolorder(transformer_large_results_df, c("dataset", "type", "model", "measure"))
 ```
+
+Data for plot fig1-recall1.pdf
 
 ```{r}
 rbind(linear_results_df, transformer_results_df, transformer_large_results_df) |>
@@ -169,142 +175,10 @@ ggplot(data = data_for_plot, aes(x = variable,
 ggsave(plot=p1,filename = "../figs/fig1-recall1.pdf", width = 12, height = 12)
 ```
 
-Detailed information on results
 
 
-```{r}
-rbind(linear_results_df, transformer_results_df, transformer_large_results_df) |>
-  melt(id.vars = c("dataset", "type", "model", "measure")) |>
-  transform(variable = factor(variable, paste0("level", 0:4), 
-                           c("1 digit", "2 digits", "3 digits", "4 digits\nISCO", "6 digits")),
-            model = factor(model, 
-                           levels = c("Logistic(bottom)", "Logistic(top)", 
-                                      "Transformer(bottom)", "Transformer(top)", 
-                                      "Transformer(rob,bottom)", "Transformer(rob,top)", 
-                                      "Transformer(large,bottom)", "Transformer(large,top)", 
-                                      "Transformer(large,rob,bottom)", "Transformer(large,rob,top)"),
-                           labels = c("Linear, bottom-up", "Linear, top-down", 
-                                      "Transformer (HerBERT-base), bottom-up", "Transformer (HerBERT-base), top-down", 
-                                      "Transformer (XLM-RoBERTa-base), bottom-up", "Transformer (XLM-RoBERTa-base), top-down", 
-                                      "Transformer (HerBERT-large), bottom-up", "Transformer (HerBERT-large), top-down", 
-                                      "Transformer (XLM-RoBERTa-large), bottom-up" , "Transformer (XLM-RoBERTa-large), top-down"
-                                      ))) |>
-  dcast(...~measure, value.var = "value") -> data_for_reports
 
-```
-
-Reporting to Latex
-
-```{r}
-# Assuming data_for_reports is your main data.table
-overall_levels <- unique(data_for_reports$dataset)
-variable_levels <- unique(data_for_reports$variable)
-
-# Function to bold max or min value in a column within a group
-bold_extrema <- function(x, fun) {
-  extrema <- fun(x, na.rm = TRUE)
-  ifelse(x == extrema, paste0("\\textbf{", x, "}"), as.character(x))
-}
-
-clean_for_latex_comment <- function(str) {
-  gsub("[\n\r]", " ", str)
-}
-
-
-# Initialize an empty vector to store all LaTeX output
-all_latex_output <- character()
-
-for (overall_level in overall_levels) {
-  for (var_level in variable_levels) {
-    # Subset data
-    data_for_reports_sub <- data_for_reports[dataset == overall_level & variable == var_level]
-    
-    # Round columns
-    cols_to_round <- c("recall@1", "recall@2", "recall@3", "recall@4", "recall@5", "log-loss")
-    data_for_reports_sub[, (cols_to_round) := lapply(.SD, function(x) sprintf("%.1f", round(x, digits = 1))), .SDcols = cols_to_round]
-    
-    # Define max and min columns
-    max_cols <- cols_to_round[-6]
-    min_cols <- cols_to_round[6]
-    other_cols <- "model"
-    
-    # Format data
-    suppressWarnings(
-      dt_formatted <- data_for_reports_sub[, c(
-      lapply(.SD[, ..other_cols], as.character),
-      lapply(.SD[, ..max_cols], bold_extrema, fun = max),
-      lapply(.SD[, ..min_cols], bold_extrema, fun = min)
-    ), by = c("dataset", "type")]
-    )
-    # Create xtable object
-    names(dt_formatted) <- str_to_title(names(dt_formatted))
-    latex_table <- xtable(dt_formatted[, -c(1,2)])
-    
-    # Prepare custom LaTeX code for the dataset labels
-    dataset_label_train <- "\\hline \\multicolumn{7}{c}{\\textbf{%s}} \\\\ \n"
-    dataset_label_test <- "\\hline \\multicolumn{7}{c}{\\textbf{%s}} \\\\ \\hline\n"
-    
-    # Find the middle row index
-    middle_row <- ceiling(nrow(dt_formatted) / 2)
-    
-    # Create the alignment string
-    align <- paste0("l", paste(rep("r", ncol(dt_formatted) - 1), collapse = ""))
-    
-    # Extract digit from variable level
-    digit <- gsub("\\D", "", var_level)
-    
-    # Create custom caption and label
-    caption <- sprintf("Results for dataset: %s for %s occupation code", overall_level, var_level)
-    label <- sprintf("tab-%s-%s-digit", tolower(overall_level), digit)
-    
-    # Determine whether to include Test dataset row
-    include_test <- !(overall_level %in% c("OfficialDict", "Thesaurus"))
-    
-    # Combine everything into a single LaTeX string
-    latex_output <- c(
-      sprintf("\\begin{table}[ht!]"),
-      sprintf("\\caption{%s}", caption),
-      sprintf("\\label{%s}", label),
-      "\\resizebox{\\textwidth}{!}{%",
-      sprintf("\\begin{tabular}{%s}", align),
-      "\\hline",
-      capture.output(print(latex_table, 
-                           include.rownames = FALSE,
-                           include.colnames = TRUE,
-                           sanitize.text.function = function(x) x,
-                           floating = FALSE,
-                           tabular.environment = "tabular",
-                           only.contents = TRUE,
-                           hline.after = c(-1, 0, nrow(dt_formatted)),
-                           add.to.row = list(
-                             pos = if(include_test) list(0, middle_row) else list(0),
-                             command = if(include_test) 
-                                         c(sprintf(dataset_label_train, "Train dataset"),
-                                           sprintf(dataset_label_test, "Test dataset"))
-                                       else 
-                                         c(sprintf(dataset_label_train, "Train dataset"))
-                           ))),
-      "\\end{tabular}",
-      "}",
-      "\\end{table}"
-    )
-    
-    # Add a comment separator and the current LaTeX output to the main vector
-    all_latex_output <- all_latex_output <- c(all_latex_output, 
-                          sprintf("\n%% Table for %s and %s\n", 
-                                  clean_for_latex_comment(overall_level), 
-                                  clean_for_latex_comment(var_level)),
-                          latex_output,
-                          "\n")
-  }
-}
-
-# Write all LaTeX output to a single file
-writeLines(all_latex_output, "../results/appendix-tab-class.tex")
-```
-
-
-## Multilingual model and data
+## Multilingual model and data (English and Polish)
 
 ```{r}
 multi_polish <- py_load_object("../results/NAWA-trans-multi-pl-results-google.pickle", convert = T)
@@ -465,6 +339,7 @@ setcolorder(multi_english_her, c("language", "dataset", "type", "model", "measur
 ```
 
 
+Plotting fig2-recall1.pdf
 
 ```{r}
 rbind(multi_polish[, trans:="Google"], multi_english[, trans:="Google"], 
@@ -497,9 +372,7 @@ rbind(multi_polish[, trans:="Google"], multi_english[, trans:="Google"],
                                       "Transformer (HerBERT-base), top-down",
                                       "Transformer (HerBERT-base), top-down"))) -> data_for_plot
   
-```
 
-```{r}
 data_for_plot |> 
 ggplot(data = _, aes(x = variable, 
                        y = value, 
@@ -526,149 +399,6 @@ ggsave(plot=p2,filename = "../figs/fig2-recall1.pdf", width = 12, height = 12)
 ```
 
 
-Report in latex
-
-```{r}
-rbind(multi_polish[, trans:="Google"], multi_english[, trans:="Google"], 
-      multi_polish_arg[, trans:="Argos"], multi_english_arg[, trans:="Argos"],
-      multi_english_her[, trans:=""]) |>
-  melt(id.vars = c("trans", "language", "dataset", "type", "model", "measure")) |>
-  transform(model=paste0(language, " ", model, " (", trans, ")")) |>
-  transform(variable = factor(variable, paste0("level", 0:4), 
-                              c("1 digit", "2 digits", "3 digits", "4 digits\nISCO", "6 digits")),
-            model = factor(model, 
-                           levels = c("Polish Transformer(rob,bottom) (Google)", 
-                                      "Polish Transformer(rob,top) (Google)", 
-                                      "English Transformer(rob,bottom) (Google)", 
-                                      "English Transformer(rob,top) (Google)", 
-                                      "Polish Transformer(rob,bottom) (Argos)", 
-                                      "Polish Transformer(rob,top) (Argos)", 
-                                      "English Transformer(rob,bottom) (Argos)", 
-                                      "English Transformer(rob,top) (Argos)", 
-                                      "English Transformer(rob,bottom,her) ()", 
-                                      "English Transformer(rob,top,her) ()"),
-                           labels = c("Polish Transformer (XLM-RoBERTa-base), bottom-up (Google)", 
-                                      "Polish Transformer (XLM-RoBERTa-base), top-down (Google)", 
-                                      "English Transformer (XLM-RoBERTa-base), bottom-up (Google)", 
-                                      "English Transformer (XLM-RoBERTa-base), top-down (Google)", 
-                                      "Polish Transformer (XLM-RoBERTa-base), bottom-up (Argos)", 
-                                      "Polish Transformer (XLM-RoBERTa-base), top-down (Argos)", 
-                                      "English Transformer (XLM-RoBERTa-base), bottom-up (Argos)", 
-                                      "English Transformer (XLM-RoBERTa-base), top-down (Argos)", 
-                                      "English Transformer (HerBERT-base), bottom-up", 
-                                      "English Transformer (HerBERT-base), top-down"))) |>
-  dcast(...~measure, value.var = "value") -> data_for_reports
-
-```
-
-
-```{r}
-# Assuming data_for_reports is your main data.table
-overall_levels <- unique(data_for_reports$dataset)
-variable_levels <- unique(data_for_reports$variable)
-
-# Function to bold max or min value in a column within a group
-bold_extrema <- function(x, fun) {
-  extrema <- fun(x, na.rm = TRUE)
-  ifelse(x == extrema, paste0("\\textbf{", x, "}"), as.character(x))
-}
-
-clean_for_latex_comment <- function(str) {
-  gsub("[\n\r]", " ", str)
-}
-
-
-# Initialize an empty vector to store all LaTeX output
-all_latex_output <- character()
-
-for (overall_level in overall_levels) {
-  for (var_level in variable_levels) {
-    # Subset data
-    data_for_reports_sub <- data_for_reports[dataset == overall_level & variable == var_level]
-    
-    # Round columns
-    cols_to_round <- c("recall@1", "recall@2", "recall@3", "recall@4", "recall@5", "log-loss")
-    data_for_reports_sub[, (cols_to_round) := lapply(.SD, function(x) sprintf("%.1f", round(x, digits = 1))), .SDcols = cols_to_round]
-    
-    # Define max and min columns
-    max_cols <- cols_to_round[-6]
-    min_cols <- cols_to_round[6]
-    other_cols <- "model"
-    
-    # Format data
-    suppressWarnings(
-      dt_formatted <- data_for_reports_sub[, c(
-      lapply(.SD[, ..other_cols], as.character),
-      lapply(.SD[, ..max_cols], bold_extrema, fun = max),
-      lapply(.SD[, ..min_cols], bold_extrema, fun = min)
-    ), by = c("dataset", "type")]
-    )
-    # Create xtable object
-    names(dt_formatted) <- str_to_title(names(dt_formatted))
-    latex_table <- xtable(dt_formatted[, -c(1,2)])
-    
-    # Prepare custom LaTeX code for the dataset labels
-    dataset_label_train <- "\\hline \\multicolumn{7}{c}{\\textbf{%s}} \\\\ \n"
-    dataset_label_test <- "\\hline \\multicolumn{7}{c}{\\textbf{%s}} \\\\ \\hline\n"
-    
-    # Find the middle row index
-    middle_row <- ceiling(nrow(dt_formatted) / 2)
-    
-    # Create the alignment string
-    align <- paste0("l", paste(rep("r", ncol(dt_formatted) - 1), collapse = ""))
-    
-    # Extract digit from variable level
-    digit <- gsub("\\D", "", var_level)
-    
-    # Create custom caption and label
-    caption <- sprintf("Results for dataset: %s for %s occupation code", overall_level, var_level)
-    label <- sprintf("tab-%s-%s-digit", tolower(overall_level), digit)
-    
-    # Determine whether to include Test dataset row
-    include_test <- !(overall_level %in% c("OfficialDict", "Thesaurus"))
-    
-    # Combine everything into a single LaTeX string
-    latex_output <- c(
-      sprintf("\\begin{table}[ht!]"),
-      sprintf("\\caption{%s}", caption),
-      sprintf("\\label{%s}", label),
-      "\\resizebox{\\textwidth}{!}{%",
-      sprintf("\\begin{tabular}{%s}", align),
-      "\\hline",
-      capture.output(print(latex_table, 
-                           include.rownames = FALSE,
-                           include.colnames = TRUE,
-                           sanitize.text.function = function(x) x,
-                           floating = FALSE,
-                           tabular.environment = "tabular",
-                           only.contents = TRUE,
-                           hline.after = c(-1, 0, nrow(dt_formatted)),
-                           add.to.row = list(
-                             pos = if(include_test) list(0, middle_row) else list(0),
-                             command = if(include_test) 
-                                         c(sprintf(dataset_label_train, "Train dataset"),
-                                           sprintf(dataset_label_test, "Test dataset"))
-                                       else 
-                                         c(sprintf(dataset_label_train, "Train dataset"))
-                           ))),
-      "\\end{tabular}",
-      "}",
-      "\\end{table}"
-    )
-    
-    # Add a comment separator and the current LaTeX output to the main vector
-    all_latex_output <- all_latex_output <- c(all_latex_output, 
-                          sprintf("\n%% Table for %s and %s\n", 
-                                  clean_for_latex_comment(overall_level), 
-                                  clean_for_latex_comment(var_level)),
-                          latex_output,
-                          "\n")
-  }
-}
-
-# Write all LaTeX output to a single file
-writeLines(all_latex_output, "../results/appendix-tab-class-roberta.tex")
-```
 
 ## Results for multilang dataset (hand only)
 
@@ -689,7 +419,10 @@ multilang_overall <- lapply(multilang_overall, \(x) {
 multilang_overall <- rbindlist(multilang_overall, idcol = "dataset")
 multilang_overall <- multilang_overall[str_detect(measure, "recall\\@(1|2|3|4|5)$|log|macro")]
 multilang_overall[, measure:=str_remove(measure, "acc/")]
+```
 
+Table 
+```{r}
 multilang_overall[measure == "recall@1" & type == "test" & dataset %in% c("overall", "cbop", "hand")][
   , .(dataset, model, digit1=`level 0`, digit2=`level 1`, isco=`level 3`, kzis=`level 4`)] |>
   xtable() |>
@@ -713,7 +446,8 @@ multilang[, lang:=str_extract(dataset, "[a-z]{2}\\.")]
 multilang[, lang:=str_remove(lang, fixed("."))]
 ```
 
-Test data (sample)
+Test data (sample only)
+
 ```{r}
 multilang_langs <- py_load_object("../results/NAWA-trans-multi-overall-lang.pickle", convert = T)
 
@@ -733,21 +467,6 @@ multilang_langs <- multilang_langs[str_detect(measure, "recall\\@(1|2|3|4|5)$|lo
 multilang_langs[, measure:=str_remove(measure, "acc/")]
 multilang_langs[, lang:=str_extract(lang, "[a-z]{2}\\.")]
 multilang_langs[, lang:=str_remove(lang, fixed("."))]
-```
-
-```{r}
-prepare_sorted_data <- function(data, x_col, y_col, facet_col) {
-  # Get the ordering from the first facet
-  order_df <- data %>%
-    filter(!!sym(facet_col) == first(!!sym(facet_col))) %>%
-    arrange(desc(!!sym(y_col))) %>%
-    select(!!sym(x_col))
-  
-  # Convert x column to factor with levels based on the order
-  data %>%
-    mutate(!!sym(x_col) := factor(!!sym(x_col), 
-                                 levels = order_df[[x_col]]))
-}
 ```
 
 
@@ -791,6 +510,8 @@ factor_orders <- as.character(multilang_for_plot[sample == "Whole test dataset" 
 ```
 
 
+Figure for multilingual
+
 ```{r}
 multilang_for_plot |>
   transform(lang = factor(lang, factor_orders)) |>
@@ -805,44 +526,86 @@ multilang_for_plot |>
 ggsave(plot = p_multi, file = "../figs/fig-multi-recall.pdf", width = 10)
 ```
 
+Data for Excel report
+
 ```{r}
-multilang_for_plot |>
-  dcast(lang + variable ~ model, value.var = "value") |>
-  transform(flag = `top-down` > `bottom-up`,
-            diff = `top-down` - `bottom-up`) |> 
-  #subset(variable == "4 digits\nISCO") |>
-  #summary()
-  aggregate(flag~variable, data = _, FUN = mean)
+tab1 <- rbind(linear_results_df, transformer_results_df, transformer_large_results_df)
+setnames(tab1, names(tab1)[5:9], c("occup-1-digit", "occup-2-digits", "occup-3-digits", "occup-4-digits", "occup-6-digits"))
+setorderv(tab1, c("dataset", "type", "model", "measure"))
+
+tab2 <- rbind(multi_polish[, trans:="Google"], 
+              multi_english[, trans:="Google"], 
+              multi_polish_arg[, trans:="Argos"], 
+              multi_english_arg[, trans:="Argos"],
+              multi_english_her[, trans:="Herbert"],
+              transformer_results_df[model %in% c("Transformer(bottom)", "Transformer(top)")][, trans:="Herbert"][, language:="Polish"])
+setcolorder(tab2, c("trans", "language", "dataset", "type", "model", "measure"))
+setorderv(tab2, c("trans", "language", "dataset", "type", "model", "measure"))
+
+tab3 <- rbind(multilang,multilang_overall,multilang_langs, fill = T)
+setcolorder(tab3, c("lang", "dataset", "type", "model", "measure"))
+tab3[str_detect(dataset, "test-data"), dataset:="Sample"]
+
+tab3[, ":="(dataset = factor(dataset, 
+                             c("Sample", "overall", "cbop", "hand", "esco", "info",  "kprm", "official", "gus"),
+                             c("Sample(test)", " Overall", "CBOP", "Hand-coded", "ESCO", "Info+",  "KPRM", "OfficialDict", "Thesaurus")),
+                     type = factor(type, c("train", "test"), c("Train dataset", "Test dataset")),
+                     model = factor(model, c("tra_bot_rob", "tra_top_rob"), c("Transformer(rob,bottom)", "Transformer(rob,top)")),
+                     measure = factor(measure, c("recall@1", "recall@2", "recall@3", "recall@4", "recall@5", "log-loss", "macro_acc")))]
+
+tab3[is.na(lang), lang := "All"]
+tab3[, lang := factor(lang, 
+                      c("All", "bg", "cs", "da", "de", "el", "en", "es", "et", "fi", "fr", 
+                    "ga", "hu", "it", "lt", "lv", "nl", "pl", "pt", "ro", "ru", 
+                    "sk", "sl", "sv", "uk"),
+                    c("All languages", "Bulgarian", "Czech", "Danish", "German", "Greek", "English",
+                   "Spanish", "Estonian", "Finnish", "French", "Irish", "Hungarian",
+                   "Italian", "Lithuanian", "Latvian", "Dutch", "Polish", 
+                   "Portuguese", "Romanian", "Russian", "Slovak", "Slovenian",
+                   "Swedish", "Ukrainian"))]
+setnames(tab3, names(tab3)[6:10], c("occup-1-digit", "occup-2-digits", "occup-3-digits", "occup-4-digits", "occup-6-digits"))
+setorderv(tab3, c("lang", "dataset", "type", "model", "measure"))
+
 ```
 
 
 Save reports to excel
 
 ```{r}
+options("openxlsx.numFmt" = "0.0000")
+options("openxlsx.withFilter" = TRUE)
+options("keepNA" = TRUE)
+
 excel_results <- createWorkbook(creator =  "Maciej Beręsewicz", 
                                 title = "Results for the paper 'Multilingual hierarchical classification of job advertisements for job vacancy statistics'")
 
+addWorksheet(excel_results, "Description")
+writeData(wb = excel_results,
+          sheet = "Description",
+          x = data.frame(README = c("Dataset contains the following sheets:",
+                                 "1. Polish-lang-only -- results for models for Polish data only",
+                                 "2. Bilingual -- results for bilingual models (Polish and English)",
+                                 "3. Multilingual -- results for 24 languages")),
+          startCol = 3,
+          startRow = 3, headerStyle = createStyle(textDecoration = "Bold"))
+
+
 addWorksheet(excel_results, "Polish-lang-only")
 writeData(wb = excel_results, 
-          x=rbind(linear_results_df, transformer_results_df, transformer_large_results_df), 
-          sheet = "Polish-lang-only",
-          withFilter = T)
+          x=tab1, 
+          sheet = "Polish-lang-only")
 
 addWorksheet(excel_results, "Bilingual")
 writeData(wb = excel_results, 
-          x=rbind(multi_polish[, trans:="Google"], multi_english[, trans:="Google"], 
-                multi_polish_arg[, trans:="Argos"], multi_english_arg[, trans:="Argos"],
-                multi_english_her[, trans:=""],
-                transformer_results_df[model %in% c("Transformer(bottom)", "Transformer(top)")][, trans:=""][, language:="Polish"]), 
-          sheet = "Bilingual",
-          withFilter = T)
+          x=tab2, 
+          sheet = "Bilingual")
 
 addWorksheet(excel_results, "Multilingual")
 writeData(wb = excel_results, 
-          x=rbind(multilang,multilang_overall,multilang_langs, fill = T), sheet = "Multilingual",
-          withFilter = T)
+          x=tab3, 
+          sheet = "Multilingual")
 
-saveWorkbook(excel_results, file = "../results/Supplementary-Materials.xlsx", overwrite = T)
+saveWorkbook(excel_results, file = "../results/models-accuracy.xlsx", overwrite = T)
 ```
 
 

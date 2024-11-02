@@ -1,33 +1,27 @@
-# Repository for the paper "Hierarchical classification of job advertisements for job vacancy statistics"
+# Repository for the paper "Multilingual hierarchical classification of job advertisements for job vacancy statistics"
 
 ## Structure
 
--   `codes/`
+-   `codes/` 
+    - raw codes for preparing the data (sampling etc)
+    - processing the results
 -   `figs/`
--   `paper/`
--   `results/` -- results from the classifier (text files).
+     - igures for the paper
+-   `results/`:
+    - results from python (`picle` files)
+    - `models-accuracy.xlsx` -- MS Excel file with results for each model
+
+## Software
+
+- The classifier is available here: 
+- Models (weights and linear) are available here: 
+- Tutorial is available here: 
 
 ## How to cite
 
--   paper
-
--   data
-
-```       
-Beręsewicz, Maciej; Pater, Robert, 2024, "Zbiór uczący i testowy na potrzeby budowy klasyfikatora ofert pracy według KZiS 2023", https://doi.org/10.18150/SX0E7G, RepOD, V2
-```
-
-``` tex
-@data{SX0E7G_2024,
-author = {Beręsewicz, Maciej and Pater, Robert},
-publisher = {RepOD},
-title = "{Zbiór uczący i testowy na potrzeby budowy klasyfikatora ofert pracy do KZiS 2023}",
-year = {2024},
-version = {V2},
-doi = {10.18150/SX0E7G},
-url = {https://doi.org/10.18150/SX0E7G}
-}
-```
+-   paper -- TBA
+-   data -- TBA
+-   models -- TBA
 
 ## Funding
 
