@@ -13,15 +13,14 @@
 
 ## Software
 
-- The classifier is available here: 
-- Models (weights and linear) are available here: 
-- Tutorial is available here: 
+- The classifier is available [here]()
+- Models (weights and linear) are available here: TBA
+- Tutorial is available [here](https://colab.research.google.com/drive/1a425aagT0lczRxXPWoUlf5aFxUII37nh?usp=sharing) 
 
 ## How to cite
 
 -   paper -- TBA
 -   data -- TBA
--   models -- TBA
 
 ## Funding
 
