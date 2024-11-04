@@ -6,7 +6,7 @@
     - raw codes for preparing the data (sampling etc)
     - processing the results
 -   `figs/`
-     - igures for the paper
+     - figures for the paper
 -   `results/`:
     - results from python (`pickle` files)
     - `models-accuracy.xlsx` -- MS Excel file with results for each model
@@ -17,12 +17,12 @@
 ## Software
 
 - The classifier is available [here](https://github.com/OJALAB/job-ads-classifier)
-- Models (weights and linear) are available here: TBA
+- Models are available [here](https://repod.icm.edu.pl/dataset.xhtml?persistentId=doi:10.18150/OCUTSI)
 - Tutorial is available [here](https://colab.research.google.com/drive/1a425aagT0lczRxXPWoUlf5aFxUII37nh?usp=sharing) 
 
 ## How to cite
 
--   paper -- TBA
+-   paper & models -- TBA
 -   data -- TBA
 
 ## Funding
