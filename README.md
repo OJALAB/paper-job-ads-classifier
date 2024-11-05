@@ -1,5 +1,7 @@
 # Repository for the paper "Multilingual hierarchical classification of job advertisements for job vacancy statistics"
 
+[`Current version of the paper (2024-11-05)`](paper/paper-hierarchical-job-classifier.pdf)
+
 ## Structure
 
 -   `codes/` 
@@ -12,7 +14,7 @@
     - `models-accuracy.xlsx` -- MS Excel file with results for each model
 -   `paper/`
     - `job-offer-polish.pdf` / `job-offer-translated.pdf` -- CBOP job offer form
-    - [`paper.pdf`](paper/paper-hierarchical-job-classifier) -- the paper
+    - `paper.pdf` -- the paper
     
 ## Software
 
