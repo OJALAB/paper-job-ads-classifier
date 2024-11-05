@@ -12,7 +12,7 @@
     - `models-accuracy.xlsx` -- MS Excel file with results for each model
 -   `paper/`
     - `job-offer-polish.pdf` / `job-offer-translated.pdf` -- CBOP job offer form
-    - `paper.pdf` -- submitted paper
+    - [`paper.pdf`](paper/paper-hierarchical-job-classifier) -- the paper
     
 ## Software
 
