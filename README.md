@@ -1,6 +1,7 @@
 # Repository for the paper "Multilingual hierarchical classification of job advertisements for job vacancy statistics"
 
-[`Current version of the paper (2024-11-05)`](paper/paper-hierarchical-job-classifier.pdf)
++ [`paper`](paper/paper-hierarchical-job-classifier.pdf)
++ [`arxiv version`](https://arxiv.org/abs/2411.03779)
 
 ## Structure
 
@@ -24,7 +25,36 @@
 
 ## How to cite
 
--   paper & models -- TBA
+-   paper -- Beręsewicz, M., Wydmuch, M., Cherniaiev, H., & Pater, R. (2024). Multilingual hierarchical classification of job advertisements for job vacancy statistics. arXiv. https://arxiv.org/abs/2411.03779
+
+
+```tex
+@misc{beresewicz2024multi,
+      title={Multilingual hierarchical classification of job advertisements for job vacancy statistics}, 
+      author={Maciej Beręsewicz and Marek Wydmuch and Herman Cherniaiev and Robert Pater},
+      year={2024},
+      eprint={2411.03779},
+      archivePrefix={arXiv},
+      primaryClass={stat.AP},
+      url={https://arxiv.org/abs/2411.03779}, 
+}
+```
+
+-   models -- Beręsewicz, M., Wydmuch, M., Pater, R., & Cherniaiev, H. (2024). Job offers classifiers for ISCO and KZiS 2023 (Version V1) [Data set]. RepOD. https://doi.org/10.18150/OCUTSI
+
+
+```tex
+@data{OCUTSI_2024,
+author = {Beręsewicz, Maciej and Wydmuch, Marek and Pater, Robert and Cherniaiev, Herman},
+publisher = {RepOD},
+title = "{Job offers classifiers for ISCO and KZiS 2023}",
+year = {2024},
+version = {V1},
+doi = {10.18150/OCUTSI},
+url = {https://doi.org/10.18150/OCUTSI}
+}
+```
+
 -   data -- TBA
 
 ## Funding
