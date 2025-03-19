@@ -175,6 +175,41 @@ ggplot(data = data_for_plot, aes(x = variable,
 ggsave(plot=p1,filename = "../figs/fig1-recall1.pdf", width = 12, height = 12)
 ```
 
+Separate plots
+
+```{r}
+dataset_l <- c("Overall", "CBOP", "Hand-coded")
+
+for (level in dataset_l) {
+  data_for_plot |>
+  subset(dataset == level) |>
+  ggplot(data = _, aes(x = variable, 
+                       y = value, 
+                       group = model, 
+                       fill = model)) +
+  geom_col(position = "dodge", color = "black") +
+  geom_text(aes(label = scales::percent(value, scale=1,accuracy = 0.1,suffix="")), 
+            position = position_dodge(width = 0.9), 
+            vjust = 0.5,
+            hjust = -0.25,
+            size = 4,
+            angle = 0) + 
+  scale_fill_brewer(type = "qual", palette = "Paired") +
+  scale_x_discrete(limits = rev(levels(data_for_plot$variable))) +
+  scale_y_continuous(breaks = seq(0,90,10)) + 
+  labs(x = "Occupation digit", y = "Accuracy (Recall@1)", fill = "Classifier") +
+  theme(legend.position = "bottom", text=element_text(size = 15)) +
+  coord_flip() + 
+  guides(fill = guide_legend(reverse = TRUE, nrow = 4))  -> p1
+
+  ggsave(plot=p1,
+       filename = glue::glue("../figs/fig1-recall1-{tolower(level)}.pdf"), width = 12, height = 12)
+    ggsave(plot=p1,
+       filename = glue::glue("../figs/fig1-recall1-{tolower(level)}.png"), width = 12, height = 12)
+}
+
+
+```
 
 
 
@@ -382,20 +417,22 @@ ggplot(data = _, aes(x = variable,
   geom_text(aes(label = scales::percent(value, scale=1,accuracy = 0.1,suffix="")), 
             position = position_dodge(width = 0.9), 
             vjust = 0.5,
-            size = 2,
+            size = 5,
             hjust = -0.25,
             angle = 0) + 
   facet_nested_wrap(~language+dataset) +
   scale_fill_brewer(type = "qual", palette = "Paired") +
   scale_x_discrete(limits = rev(levels(data_for_plot$variable))) +
   scale_y_continuous(breaks = seq(0,110,10),
-                     limits = c(0,90)) + 
+                     limits = c(0,100)) + 
   labs(x = "Occupation digit", y = "Accuracy (Recall@1)", fill = "Classifier") +
   #theme(legend.position = c(1, 0.5), legend.justification = c(1.25, 1.25)) +
-  theme(legend.position = "bottom") +
-  coord_flip()  -> p2
+  theme(legend.position = "bottom", text=element_text(size = 15)) +
+  coord_flip()  + 
+  guides(fill = guide_legend(reverse = TRUE, nrow = 3)) -> p2
 
-ggsave(plot=p2,filename = "../figs/fig2-recall1.pdf", width = 12, height = 12)
+ggsave(plot=p2,filename = "../figs/fig2-recall1.pdf", width = 13, height = 17)
+ggsave(plot=p2,filename = "../figs/fig2-recall1.png", width = 13, height = 17)
 ```
 
 
