@@ -48,7 +48,7 @@ linear_results_df[, measure:=str_remove(measure, "acc/")]
 
 linear_results_df[, ":="(dataset = factor(dataset, 
                                           c("overall", "cbop", "hand", "esco", "info",  "kprm", "official", "gus"),
-                                          c("Overall", "CBOP", "Hand-coded", "ESCO", "Info+",  "KPRM", "OfficialDict", "Thesaurus")),
+                                          c("Overall", "ePraca", "Hand-coded", "ESCO", "Info+",  "KPRM", "OfficialDict", "Thesaurus")),
                      type = factor(type, c("train", "test"), c("Train dataset", "Test dataset")),
                      model = factor(model, c("lin_bot", "lin_top"), c("Logistic(bottom)", "Logistic(top)")),
                      measure = factor(measure, c("recall@1", "recall@2", "recall@3", "recall@4", "recall@5", "log-loss", "macro_acc")))]
@@ -81,7 +81,7 @@ transformer_results_df[, measure:=str_remove(measure, "acc/")]
 
 transformer_results_df[, ":="(dataset = factor(dataset, 
                                           c("overall", "cbop", "hand", "esco", "info",  "kprm", "official", "gus"),
-                                          c("Overall", "CBOP", "Hand-coded", "ESCO", "Info+",  "KPRM", "OfficialDict", "Thesaurus")),
+                                          c("Overall", "ePraca", "Hand-coded", "ESCO", "Info+",  "KPRM", "OfficialDict", "Thesaurus")),
                      type = factor(type, c("train", "test"), c("Train dataset", "Test dataset")),
                      model = factor(model, c("tra_bot", "tra_top", "tra_bot_rob", "tra_top_rob"), 
                                     c("Transformer(bottom)", "Transformer(top)", "Transformer(rob,bottom)", "Transformer(rob,top)")),
@@ -115,7 +115,7 @@ transformer_large_results_df[, measure:=str_remove(measure, "acc/")]
 
 transformer_large_results_df[, ":="(dataset = factor(dataset, 
                                           c("overall", "cbop", "hand", "esco", "info",  "kprm", "official", "gus"),
-                                          c("Overall", "CBOP", "Hand-coded", "ESCO", "Info+",  "KPRM", "OfficialDict", "Thesaurus")),
+                                          c("Overall", "ePraca", "Hand-coded", "ESCO", "Info+",  "KPRM", "OfficialDict", "Thesaurus")),
                      type = factor(type, c("train", "test"), c("Train dataset", "Test dataset")),
                      model = factor(model, c("tra_bot", "tra_top", "tra_bot_rob", "tra_top_rob"), 
                                     c("Transformer(large,bottom)", "Transformer(large,top)",
@@ -132,7 +132,7 @@ Data for plot fig1-recall1.pdf
 ```{r}
 rbind(linear_results_df, transformer_results_df, transformer_large_results_df) |>
   melt(id.vars = c("dataset", "type", "model", "measure")) |>
-  subset(dataset %in% c("Overall", "CBOP", "Hand-coded") 
+  subset(dataset %in% c("Overall", "ePraca", "Hand-coded") 
          & measure %in% c("recall@1") 
          & type == "Test dataset"
          )  |>
@@ -178,7 +178,7 @@ ggsave(plot=p1,filename = "../figs/fig1-recall1.pdf", width = 12, height = 12)
 Separate plots
 
 ```{r}
-dataset_l <- c("Overall", "CBOP", "Hand-coded")
+dataset_l <- c("Overall", "ePraca", "Hand-coded")
 
 for (level in dataset_l) {
   data_for_plot |>
@@ -235,7 +235,7 @@ multi_polish[, measure:=str_remove(measure, "acc/")]
 
 multi_polish[, ":="(dataset = factor(dataset, 
                                           c("overall", "cbop", "hand", "esco", "info",  "kprm", "official", "gus"),
-                                          c("Overall", "CBOP", "Hand-coded", "ESCO", "Info+",  "KPRM", "OfficialDict", "Thesaurus")),
+                                          c("Overall", "ePraca", "Hand-coded", "ESCO", "Info+",  "KPRM", "OfficialDict", "Thesaurus")),
                      type = factor(type, c("train", "test"), c("Train dataset", "Test dataset")),
                      language = "Polish", 
                      model = factor(model, c("tra_bot_rob", "tra_top_rob"), 
@@ -265,7 +265,7 @@ multi_english[, measure:=str_remove(measure, "acc/")]
 
 multi_english[, ":="(dataset = factor(dataset, 
                                           c("overall", "cbop", "hand", "esco", "info",  "kprm", "official", "gus"),
-                                          c("Overall", "CBOP", "Hand-coded", "ESCO", "Info+",  "KPRM", "OfficialDict", "Thesaurus")),
+                                          c("Overall", "ePraca", "Hand-coded", "ESCO", "Info+",  "KPRM", "OfficialDict", "Thesaurus")),
                      type = factor(type, c("train", "test"), c("Train dataset", "Test dataset")),
                      language = "English", 
                      model = factor(model, c("tra_bot_rob", "tra_top_rob"), 
@@ -299,7 +299,7 @@ multi_polish_arg[, measure:=str_remove(measure, "acc/")]
 
 multi_polish_arg[, ":="(dataset = factor(dataset, 
                                           c("overall", "cbop", "hand", "esco", "info",  "kprm", "official", "gus"),
-                                          c("Overall", "CBOP", "Hand-coded", "ESCO", "Info+",  "KPRM", "OfficialDict", "Thesaurus")),
+                                          c("Overall", "ePraca", "Hand-coded", "ESCO", "Info+",  "KPRM", "OfficialDict", "Thesaurus")),
                      type = factor(type, c("train", "test"), c("Train dataset", "Test dataset")),
                      language = "Polish", 
                      model = factor(model, c("tra_bot_rob", "tra_top_rob"), 
@@ -329,7 +329,7 @@ multi_english_arg[, measure:=str_remove(measure, "acc/")]
 
 multi_english_arg[, ":="(dataset = factor(dataset, 
                                           c("overall", "cbop", "hand", "esco", "info",  "kprm", "official", "gus"),
-                                          c("Overall", "CBOP", "Hand-coded", "ESCO", "Info+",  "KPRM", "OfficialDict", "Thesaurus")),
+                                          c("Overall", "ePraca", "Hand-coded", "ESCO", "Info+",  "KPRM", "OfficialDict", "Thesaurus")),
                      type = factor(type, c("train", "test"), c("Train dataset", "Test dataset")),
                      language = "English", 
                      model = factor(model, c("tra_bot_rob", "tra_top_rob"), 
@@ -361,7 +361,7 @@ multi_english_her[, measure:=str_remove(measure, "acc/")]
 
 multi_english_her[, ":="(dataset = factor(dataset, 
                                           c("overall", "cbop", "hand", "esco", "info",  "kprm", "official", "gus"),
-                                          c("Overall", "CBOP", "Hand-coded", "ESCO", "Info+",  "KPRM", "OfficialDict", "Thesaurus")),
+                                          c("Overall", "ePraca", "Hand-coded", "ESCO", "Info+",  "KPRM", "OfficialDict", "Thesaurus")),
                      type = factor(type, c("train", "test"), c("Train dataset", "Test dataset")),
                      language = "English", 
                      model = factor(model, c("tra_bot_rob", "tra_top_rob"), 
@@ -382,7 +382,7 @@ rbind(multi_polish[, trans:="Google"], multi_english[, trans:="Google"],
       multi_english_her[, trans:=""],
       transformer_results_df[model %in% c("Transformer(bottom)", "Transformer(top)")][, trans:=""][, language:="Polish"]) |>
   melt(id.vars = c("trans", "language", "dataset", "type", "model", "measure")) |>
-  subset(dataset %in% c("Overall", "CBOP", "Hand-coded") 
+  subset(dataset %in% c("Overall", "ePraca", "Hand-coded") 
          & measure %in% c("recall@1") 
          & type == "Test dataset"
          )  |>
@@ -585,7 +585,7 @@ tab3[str_detect(dataset, "test-data"), dataset:="Sample"]
 
 tab3[, ":="(dataset = factor(dataset, 
                              c("Sample", "overall", "cbop", "hand", "esco", "info",  "kprm", "official", "gus"),
-                             c("Sample(test)", " Overall", "CBOP", "Hand-coded", "ESCO", "Info+",  "KPRM", "OfficialDict", "Thesaurus")),
+                             c("Sample(test)", " Overall", "ePraca", "Hand-coded", "ESCO", "Info+",  "KPRM", "OfficialDict", "Thesaurus")),
                      type = factor(type, c("train", "test"), c("Train dataset", "Test dataset")),
                      model = factor(model, c("tra_bot_rob", "tra_top_rob"), c("Transformer(rob,bottom)", "Transformer(rob,top)")),
                      measure = factor(measure, c("recall@1", "recall@2", "recall@3", "recall@4", "recall@5", "log-loss", "macro_acc")))]
