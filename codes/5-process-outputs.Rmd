@@ -173,6 +173,7 @@ ggplot(data = data_for_plot, aes(x = variable,
   guides(fill = guide_legend(reverse = TRUE)) -> p1
 
 ggsave(plot=p1,filename = "../figs/fig1-recall1.pdf", width = 12, height = 12)
+ggsave(plot=p1,filename = "../figs/fig1-recall1.jpeg", width = 12, height = 12)
 ```
 
 Separate plots
@@ -204,8 +205,8 @@ for (level in dataset_l) {
 
   ggsave(plot=p1,
        filename = glue::glue("../figs/fig1-recall1-{tolower(level)}.pdf"), width = 12, height = 12)
-    ggsave(plot=p1,
-       filename = glue::glue("../figs/fig1-recall1-{tolower(level)}.png"), width = 12, height = 12)
+  ggsave(plot=p1,
+       filename = glue::glue("../figs/fig1-recall1-{tolower(level)}.jpeg"), width = 12, height = 12)
 }
 
 
@@ -432,7 +433,8 @@ ggplot(data = _, aes(x = variable,
   guides(fill = guide_legend(reverse = TRUE, nrow = 3)) -> p2
 
 ggsave(plot=p2,filename = "../figs/fig2-recall1.pdf", width = 13, height = 17)
-ggsave(plot=p2,filename = "../figs/fig2-recall1.png", width = 13, height = 17)
+ggsave(plot=p2,filename = "../figs/fig2-recall1.jpeg", width = 13, height = 17)
+
 ```
 
 
@@ -561,6 +563,7 @@ multilang_for_plot |>
   facet_wrap(~sample, ncol = 2)-> p_multi
 
 ggsave(plot = p_multi, file = "../figs/fig-multi-recall.pdf", width = 10)
+ggsave(plot = p_multi, file = "../figs/fig-multi-recall.jpeg", width = 10)
 ```
 
 Data for Excel report
